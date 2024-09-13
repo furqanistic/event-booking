@@ -83,8 +83,8 @@ const Calendar = () => {
 
   return (
     <div className='flex flex-col h-full bg-white'>
-      <div className='flex items-center justify-between p-4 bg-gray-50'>
-        <h2 className='text-xl font-semibold text-gray-800'>
+      <div className='flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50'>
+        <h2 className='text-xl font-semibold text-gray-800 mb-2 sm:mb-0'>
           {months[currentDate.getMonth()]} de {currentDate.getFullYear()}
         </h2>
         <div className='flex items-center space-x-2'>
@@ -109,7 +109,7 @@ const Calendar = () => {
         {weekdays.map((day) => (
           <div
             key={day}
-            className='text-center py-2 text-xs font-medium text-blue-600'
+            className='text-center py-2 text-xs sm:text-sm font-medium text-blue-600'
           >
             {day}
           </div>
@@ -119,11 +119,11 @@ const Calendar = () => {
         {calendarDays.map((dayObj, index) => (
           <div
             key={index}
-            className={`bg-white p-1 ${
+            className={`bg-white p-1 sm:p-2 ${
               dayObj.currentMonth ? 'text-gray-700' : 'text-gray-400'
             } ${isToday(dayObj.day) ? 'bg-blue-100' : ''}`}
           >
-            <span className='text-xs'>{dayObj.day}</span>
+            <span className='text-xs sm:text-sm'>{dayObj.day}</span>
             {/* Event placeholders can be added here */}
           </div>
         ))}
