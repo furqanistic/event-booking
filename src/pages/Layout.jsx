@@ -7,7 +7,7 @@ const Sidebar = () => {
   const location = useLocation()
 
   const menuItems = [
-    { icon: Home, label: 'Home', path: '/' },
+    { icon: Home, label: 'Home', path: '/dashboard' },
     { icon: Megaphone, label: 'News', path: '/novedades' },
     { icon: Calendar, label: 'Events', path: '/nuevo-evento' },
     { icon: ShoppingBag, label: 'Merch', path: '/merch' },
