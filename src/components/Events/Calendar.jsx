@@ -114,6 +114,17 @@ const Calendar = () => {
       minute: '2-digit',
     })
   }
+
+  const EventItem = ({ event }) => (
+    <div
+      className='bg-blue-100 border-l-4 border-blue-500 p-1 mb-1 rounded text-xs cursor-pointer hover:bg-blue-200 transition-colors duration-200'
+      onClick={() => setSelectedEvent(event)}
+    >
+      <div className='font-semibold truncate'>{event.title}</div>
+      <div className='text-gray-600'>{formatTime(event.start)}</div>
+    </div>
+  )
+
   return (
     <div className='flex flex-col h-full bg-white'>
       <div className='flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50'>
@@ -121,56 +132,73 @@ const Calendar = () => {
           {months[currentDate.getMonth()]} de {currentDate.getFullYear()}
         </h2>
         <div className='flex items-center space-x-2'>
-          <button className='px-3 py-1 text-sm bg-gray-200 rounded-md'>
-            hoy
+          <button
+            className='px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200'
+            onClick={() => setCurrentDate(new Date())}
+          >
+            Hoy
           </button>
           <button
             onClick={prevMonth}
-            className='p-1 rounded-full hover:bg-gray-200'
+            className='p-1 rounded-full hover:bg-gray-200 transition-colors duration-200'
           >
             <ChevronLeftIcon size={20} className='text-blue-600' />
           </button>
           <button
             onClick={nextMonth}
-            className='p-1 rounded-full hover:bg-gray-200'
+            className='p-1 rounded-full hover:bg-gray-200 transition-colors duration-200'
           >
             <ChevronRightIcon size={20} className='text-blue-600' />
           </button>
         </div>
       </div>
-      <div className='grid grid-cols-7 bg-gray-50 border-b border-gray-200'>
+      <div className='grid grid-cols-7 bg-gray-100 border-b border-gray-200'>
         {weekdays.map((day) => (
           <div
             key={day}
-            className='text-center py-2 text-xs sm:text-sm font-medium text-blue-600'
+            className='text-center py-2 text-xs sm:text-sm font-medium text-gray-700'
           >
             {day}
           </div>
         ))}
       </div>
       <div className='flex-grow grid grid-cols-7 grid-rows-6 gap-px bg-gray-200'>
-        {calendarDays.map((dayObj, index) => (
-          <div
-            key={index}
-            className={`bg-white p-1 sm:p-2 ${
-              dayObj.currentMonth ? 'text-gray-700' : 'text-gray-400'
-            } ${isToday(dayObj.day) ? 'bg-blue-100' : ''}`}
-          >
-            <span className='text-xs sm:text-sm'>{dayObj.day}</span>
-            {getEventsForDay(dayObj.day).map((event) => (
-              <div
-                key={event.id}
-                className='bg-blue-500 text-white text-xs p-1 mt-1 rounded cursor-pointer'
-                onClick={() => setSelectedEvent(event)}
+        {calendarDays.map((dayObj, index) => {
+          const dayEvents = getEventsForDay(dayObj.day)
+          return (
+            <div
+              key={index}
+              className={`bg-white p-1 ${
+                dayObj.currentMonth
+                  ? 'text-gray-700'
+                  : 'text-gray-400 bg-gray-50'
+              } ${
+                isToday(dayObj.day) ? 'bg-blue-50' : ''
+              } overflow-hidden flex flex-col`}
+            >
+              <span
+                className={`text-xs sm:text-sm font-semibold ${
+                  isToday(dayObj.day) ? 'text-blue-600' : ''
+                }`}
               >
-                <div>{event.title}</div>
-                <div>
-                  {formatTime(event.start)} - {formatTime(event.end)}
-                </div>
+                {dayObj.day}
+              </span>
+              <div className='flex-grow overflow-y-auto'>
+                {dayEvents.slice(0, 3).map((event) => (
+                  <EventItem key={event.id} event={event} />
+                ))}
+                {dayEvents.length > 3 && (
+                  <div
+                    className='text-xs text-gray-500 cursor-pointer hover:text-gray-700'
+                    onClick={() => console.log('Show more events')}
+                  >
+                    +{dayEvents.length - 3} more
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-        ))}
+            </div>
+          )
+        })}
       </div>
       {selectedEvent && (
         <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4'>
@@ -209,7 +237,7 @@ const Calendar = () => {
                 selectedEvent.details.selectedMaterials.length > 0 && (
                   <div>
                     <p className='text-sm font-medium text-gray-500'>
-                      Materials
+                      Materiales
                     </p>
                     <ul className='list-disc pl-5 mt-1'>
                       {selectedEvent.details.selectedMaterials.map(
@@ -223,7 +251,7 @@ const Calendar = () => {
               {selectedEvent.details.sala && (
                 <div className='space-y-2'>
                   <div>
-                    <p className='text-sm font-medium text-gray-500'>Room</p>
+                    <p className='text-sm font-medium text-gray-500'>Sala</p>
                     <p className='mt-1'>{selectedEvent.details.selectedRoom}</p>
                   </div>
                   <div>

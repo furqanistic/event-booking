@@ -542,7 +542,7 @@ const EventForm = () => {
             name='sala'
             checked={formData.sala}
             onChange={handleInputChange}
-            label='Room'
+            label='Sala'
           />
 
           {formData.sala && (
@@ -567,7 +567,7 @@ const EventForm = () => {
                 </select>
               </div>
               <div>
-                <label className='block text-sm text-gray-600 mb-1'>Room</label>
+                <label className='block text-sm text-gray-600 mb-1'>Sala</label>
                 <div className='flex space-x-2'>
                   <button
                     type='button'
