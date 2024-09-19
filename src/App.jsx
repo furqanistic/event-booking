@@ -1,4 +1,5 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import AppointmentPage from './pages/AppointmentPage'
 import Events from './pages/EventsPage'
 import Home from './pages/Home'
 import LoginPage from './pages/LoginPage'
@@ -19,6 +20,7 @@ const App = () => {
             <Route path='novedades' element={<News />} />
             <Route path='merch' element={<MerchPage />} />
             <Route path='mi-cuenta' element={<Setting />} />
+            <Route path='appointment' element={<AppointmentPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

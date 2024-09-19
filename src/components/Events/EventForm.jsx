@@ -3,17 +3,19 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from 'lucide-react'
+import moment from 'moment'
 import { useState } from 'react'
+import { Calendar, momentLocalizer } from 'react-big-calendar'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
 import { EventProvider, useEventContext } from './EventProvider'
-
+const localizer = momentLocalizer(moment)
 const EventForm = () => {
   const { addEvent } = useEventContext()
   const [formData, setFormData] = useState({
     eventType: 'Congreso',
-    startDate: '',
-    startTime: '',
-    endDate: '',
-    endTime: '',
+    start: null,
+    end: null,
     materials: false,
     sala: false,
     trainer: false,
@@ -36,9 +38,21 @@ const EventForm = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }))
+  }
+
+  const handleDateChange = (date, name) => {
+    setFormData((prev) => ({ ...prev, [name]: date }))
+  }
+
+  const handleCalendarSelect = ({ start, end }) => {
     setFormData((prevState) => ({
       ...prevState,
-      [name]: type === 'checkbox' ? checked : value,
+      start,
+      end,
     }))
   }
 
@@ -247,32 +261,12 @@ const EventForm = () => {
     addEvent({
       id: Date.now(),
       title: formData.eventType,
-      start: new Date(`${formData.startDate}T${formData.startTime}`),
-      end: new Date(`${formData.endDate}T${formData.endTime}`),
-      details: {
-        ...formData,
-        department:
-          departmentOptions.find((d) => d.value === formData.department)
-            ?.label || '',
-        province:
-          provinceOptions.find((p) => p.value === formData.province)?.label ||
-          '',
-        district:
-          districtOptions.find((d) => d.value === formData.district)?.label ||
-          '',
-      },
+      start: formData.start,
+      end: formData.end,
+      details: { ...formData },
     })
     console.log('Event added:', formData)
     // Reset form or show confirmation
-  }
-
-  const handleMaterialToggle = (materialId) => {
-    setFormData((prevState) => {
-      const updatedMaterials = prevState.selectedMaterials.includes(materialId)
-        ? prevState.selectedMaterials.filter((id) => id !== materialId)
-        : [...prevState.selectedMaterials, materialId]
-      return { ...prevState, selectedMaterials: updatedMaterials }
-    })
   }
 
   const indexOfLastItem = currentPage * itemsPerPage
@@ -330,60 +324,6 @@ const EventForm = () => {
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber)
 
-  const ItemList = ({ items, stateKey, currentPage, setPageFunction }) => (
-    <>
-      <div className='space-y-2'>
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className='flex items-center justify-between p-2 border border-gray-200 rounded-md'
-          >
-            <div className='flex items-center space-x-2'>
-              <img
-                src={item.image}
-                alt={item.name}
-                className='w-12 h-12 object-cover rounded'
-              />
-              <div>
-                <p className='font-medium'>{item.name}</p>
-                <p className='text-sm text-gray-500'>
-                  {item.available} available(s)
-                </p>
-              </div>
-            </div>
-            <button
-              type='button'
-              onClick={() => handleItemToggle(item.id, stateKey)}
-              className='w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-md'
-            >
-              {formData[stateKey].includes(item.id) ? '-' : '+'}
-            </button>
-          </div>
-        ))}
-      </div>
-      <div className='flex justify-between items-center mt-4'>
-        <button
-          type='button'
-          onClick={() => paginate(currentPage - 1, setPageFunction)}
-          disabled={currentPage === 1}
-          className='p-2 bg-gray-200 rounded-full disabled:opacity-50'
-        >
-          <ChevronLeftIcon size={20} />
-        </button>
-        <span>
-          {currentPage} / {Math.ceil(items.length / itemsPerPage)}
-        </span>
-        <button
-          type='button'
-          onClick={() => paginate(currentPage + 1, setPageFunction)}
-          disabled={indexOfLastItem >= items.length}
-          className='p-2 bg-gray-200 rounded-full disabled:opacity-50'
-        >
-          <ChevronRightIcon size={20} />
-        </button>
-      </div>
-    </>
-  )
   return (
     <div className='flex flex-col h-screen bg-white'>
       <h1 className='text-2xl font-bold p-4 border-b'>Eventos</h1>
@@ -409,50 +349,6 @@ const EventForm = () => {
               <ChevronDownIcon
                 size={20}
                 className='absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none'
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>
-              Fecha de inicio:
-            </label>
-            <div className='flex space-x-2'>
-              <input
-                type='date'
-                name='startDate'
-                value={formData.startDate}
-                onChange={handleInputChange}
-                className='flex-1 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-              />
-              <input
-                type='time'
-                name='startTime'
-                value={formData.startTime}
-                onChange={handleInputChange}
-                className='flex-1 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>
-              Fecha de fin:
-            </label>
-            <div className='flex space-x-2'>
-              <input
-                type='date'
-                name='endDate'
-                value={formData.endDate}
-                onChange={handleInputChange}
-                className='flex-1 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-              />
-              <input
-                type='time'
-                name='endTime'
-                value={formData.endTime}
-                onChange={handleInputChange}
-                className='flex-1 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
               />
             </div>
           </div>
@@ -538,7 +434,34 @@ const EventForm = () => {
               </div>
             </div>
           )}
-          <Toggle
+
+          <div className='grid grid-cols-2 gap-4'>
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-1'>
+                Start Date & Time
+              </label>
+              <DatePicker
+                selected={formData.start}
+                onChange={(date) => handleDateChange(date, 'start')}
+                showTimeSelect
+                dateFormat='MMMM d, yyyy h:mm aa'
+                className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
+              />
+            </div>
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-1'>
+                End Date & Time
+              </label>
+              <DatePicker
+                selected={formData.end}
+                onChange={(date) => handleDateChange(date, 'end')}
+                showTimeSelect
+                dateFormat='MMMM d, yyyy h:mm aa'
+                className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
+              />
+            </div>
+          </div>
+          {/* <Toggle
             name='sala'
             checked={formData.sala}
             onChange={handleInputChange}
@@ -610,7 +533,7 @@ const EventForm = () => {
                 ></textarea>
               </div>
             </div>
-          )}
+          )} */}
 
           <Toggle
             name='trainer'

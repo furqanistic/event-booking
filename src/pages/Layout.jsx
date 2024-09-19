@@ -1,15 +1,22 @@
 import { motion } from 'framer-motion'
-import { Calendar, Home, Megaphone, Settings, ShoppingBag } from 'lucide-react'
+import {
+  Calendar,
+  Clock,
+  Home,
+  Megaphone,
+  Settings,
+  ShoppingBag,
+} from 'lucide-react'
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 const Sidebar = () => {
   const location = useLocation()
-
   const menuItems = [
     { icon: Home, label: 'Home', path: '/dashboard' },
     { icon: Megaphone, label: 'News', path: '/novedades' },
     { icon: Calendar, label: 'Events', path: '/nuevo-evento' },
+    { icon: Clock, label: 'Appointments', path: '/appointment' },
     { icon: ShoppingBag, label: 'Merch', path: '/merch' },
     { icon: Settings, label: 'Settings', path: '/mi-cuenta' },
   ]

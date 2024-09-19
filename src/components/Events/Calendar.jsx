@@ -3,6 +3,7 @@ import jsPDF from 'jspdf'
 import { ChevronLeftIcon, ChevronRightIcon, Download, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useEventContext } from './EventProvider'
+
 const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [calendarDays, setCalendarDays] = useState([])
