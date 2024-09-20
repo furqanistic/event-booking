@@ -2,6 +2,7 @@ import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 import { ChevronLeftIcon, ChevronRightIcon, Download, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import EventDetails from './EventDetails'
 import { useEventContext } from './EventProvider'
 
 const Calendar = () => {
@@ -143,8 +144,8 @@ const Calendar = () => {
           ? 'bg-yellow-100 border-yellow-500'
           : 'bg-blue-100 border-blue-500'
       } 
-      p-1 mb-1 rounded text-xs cursor-pointer hover:bg-opacity-75 transition-colors duration-200 
-      ${isStart ? 'border-l-4' : ''} ${isEnd ? 'border-r-4' : ''}`}
+    p-1 mb-1 rounded text-xs cursor-pointer hover:bg-opacity-75 transition-colors duration-200 
+    ${isStart ? 'border-l-4' : ''} ${isEnd ? 'border-r-4' : ''}`}
       onClick={() => !event.isDraft && setSelectedEvent(event)}
     >
       <div className='font-semibold truncate'>{event.title}</div>
@@ -260,97 +261,7 @@ const Calendar = () => {
                 <X size={24} />
               </button>
             </div>
-            <div id='event-details' className='p-6 space-y-4'>
-              <div className='grid grid-cols-2 gap-4'>
-                <div>
-                  <p className='text-sm font-medium text-gray-500'>Start</p>
-                  <p className='mt-1'>
-                    {new Date(selectedEvent.start).toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className='text-sm font-medium text-gray-500'>End</p>
-                  <p className='mt-1'>
-                    {new Date(selectedEvent.end).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-              <div>
-                <p className='text-sm font-medium text-gray-500'>Event Type</p>
-                <p className='mt-1'>{selectedEvent.details.eventType}</p>
-              </div>
-              {selectedEvent.details.materials &&
-                selectedEvent.details.selectedMaterials.length > 0 && (
-                  <div>
-                    <p className='text-sm font-medium text-gray-500'>
-                      Materiales
-                    </p>
-                    <ul className='list-disc pl-5 mt-1'>
-                      {selectedEvent.details.selectedMaterials.map(
-                        (material, index) => (
-                          <li key={index}>{material}</li>
-                        )
-                      )}
-                    </ul>
-                  </div>
-                )}
-              {selectedEvent.details.sala && (
-                <div className='space-y-2'>
-                  <div>
-                    <p className='text-sm font-medium text-gray-500'>Sala</p>
-                    <p className='mt-1'>{selectedEvent.details.selectedRoom}</p>
-                  </div>
-                  <div>
-                    <p className='text-sm font-medium text-gray-500'>
-                      Capacity
-                    </p>
-                    <p className='mt-1'>
-                      {selectedEvent.details.roomCapacity}{' '}
-                      {selectedEvent.details.roomCapacity === '1'
-                        ? 'person'
-                        : 'people'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className='text-sm font-medium text-gray-500'>
-                      Assistants
-                    </p>
-                    <p className='mt-1'>{selectedEvent.details.assistants}</p>
-                  </div>
-                </div>
-              )}
-              {selectedEvent.details.merchandising &&
-                selectedEvent.details.selectedMerchandising.length > 0 && (
-                  <div>
-                    <p className='text-sm font-medium text-gray-500'>
-                      Merchandising
-                    </p>
-                    <ul className='list-disc pl-5 mt-1'>
-                      {selectedEvent.details.selectedMerchandising.map(
-                        (item, index) => (
-                          <li key={index}>{item}</li>
-                        )
-                      )}
-                    </ul>
-                  </div>
-                )}
-              <div>
-                <p className='text-sm font-medium text-gray-500'>Address</p>
-                <p className='mt-1'>{selectedEvent.details.address}</p>
-              </div>
-              <div>
-                <p className='text-sm font-medium text-gray-500'>Reference</p>
-                <p className='mt-1'>{selectedEvent.details.reference}</p>
-              </div>
-              <div>
-                <p className='text-sm font-medium text-gray-500'>Location</p>
-                <p className='mt-1'>
-                  {selectedEvent.details.department},{' '}
-                  {selectedEvent.details.province},{' '}
-                  {selectedEvent.details.district}
-                </p>
-              </div>
-            </div>
+            <EventDetails event={selectedEvent} />
             <div className='sticky bottom-0 bg-white z-10 flex justify-end p-4 border-t'>
               <button
                 onClick={generatePDF}

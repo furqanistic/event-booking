@@ -152,7 +152,26 @@ const EventForm = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    addEvent(formData)
+    const newEvent = {
+      title: formData.eventType,
+      start: formData.start,
+      end: formData.end,
+      details: {
+        eventType: formData.eventType,
+        materials: formData.materials,
+        selectedMaterials: formData.selectedMaterials,
+        trainer: formData.trainer,
+        merchandising: formData.merchandising,
+        selectedMerchandising: formData.selectedMerchandising,
+        address: formData.address,
+        reference: formData.reference,
+        department: formData.department,
+        province: formData.province,
+        district: formData.district,
+      },
+    }
+    console.log('New event being added:', newEvent)
+    addEvent(newEvent)
     // Reset your form here
   }
 
