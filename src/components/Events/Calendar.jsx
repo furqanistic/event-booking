@@ -8,7 +8,8 @@ const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [calendarDays, setCalendarDays] = useState([])
   const [selectedEvent, setSelectedEvent] = useState(null)
-  const { events } = useEventContext()
+  const { events, draftEvent } = useEventContext()
+
   const months = [
     'enero',
     'febrero',
@@ -23,18 +24,26 @@ const Calendar = () => {
     'noviembre',
     'diciembre',
   ]
-
   const weekdays = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
 
-  const getEventsForDay = (day) => {
-    return events.filter((event) => {
-      const eventDate = new Date(event.start)
-      return (
-        eventDate.getDate() === day &&
-        eventDate.getMonth() === currentDate.getMonth() &&
-        eventDate.getFullYear() === currentDate.getFullYear()
-      )
+  const getEventsForDay = (day, month, year) => {
+    const dayEvents = events.filter((event) => {
+      const eventStart = new Date(event.start)
+      const eventEnd = new Date(event.end)
+      const currentDay = new Date(year, month, day)
+      return currentDay >= eventStart && currentDay <= eventEnd
     })
+
+    if (draftEvent && draftEvent.start && draftEvent.end) {
+      const draftStart = new Date(draftEvent.start)
+      const draftEnd = new Date(draftEvent.end)
+      const currentDay = new Date(year, month, day)
+      if (currentDay >= draftStart && currentDay <= draftEnd) {
+        dayEvents.push({ ...draftEvent, isDraft: true })
+      }
+    }
+
+    return dayEvents
   }
 
   const generatePDF = async () => {
@@ -72,18 +81,29 @@ const Calendar = () => {
 
     // Previous month days
     for (let i = firstDayOfMonth - 1; i >= 0; i--) {
-      days.push({ day: daysInPrevMonth - i, currentMonth: false })
+      const day = daysInPrevMonth - i
+      const month = currentDate.getMonth() - 1
+      const year = currentDate.getFullYear()
+      days.push({ day, month, year, currentMonth: false })
     }
 
     // Current month days
     for (let i = 1; i <= daysInMonth; i++) {
-      days.push({ day: i, currentMonth: true })
+      days.push({
+        day: i,
+        month: currentDate.getMonth(),
+        year: currentDate.getFullYear(),
+        currentMonth: true,
+      })
     }
 
     // Next month days
-    const remainingDays = 42 - days.length // 6 rows * 7 days = 42
+    const remainingDays = 42 - days.length
     for (let i = 1; i <= remainingDays; i++) {
-      days.push({ day: i, currentMonth: false })
+      const month = currentDate.getMonth() + 1
+      const year =
+        month === 12 ? currentDate.getFullYear() + 1 : currentDate.getFullYear()
+      days.push({ day: i, month, year, currentMonth: false })
     }
 
     setCalendarDays(days)
@@ -116,13 +136,21 @@ const Calendar = () => {
     })
   }
 
-  const EventItem = ({ event }) => (
+  const EventItem = ({ event, isStart, isEnd }) => (
     <div
-      className='bg-blue-100 border-l-4 border-blue-500 p-1 mb-1 rounded text-xs cursor-pointer hover:bg-blue-200 transition-colors duration-200'
-      onClick={() => setSelectedEvent(event)}
+      className={`${
+        event.isDraft
+          ? 'bg-yellow-100 border-yellow-500'
+          : 'bg-blue-100 border-blue-500'
+      } 
+      p-1 mb-1 rounded text-xs cursor-pointer hover:bg-opacity-75 transition-colors duration-200 
+      ${isStart ? 'border-l-4' : ''} ${isEnd ? 'border-r-4' : ''}`}
+      onClick={() => !event.isDraft && setSelectedEvent(event)}
     >
       <div className='font-semibold truncate'>{event.title}</div>
-      <div className='text-gray-600'>{formatTime(event.start)}</div>
+      <div className='text-yellow-800 text-xs'>
+        {formatTime(event.start)} - {formatTime(event.end)}
+      </div>
     </div>
   )
 
@@ -153,6 +181,7 @@ const Calendar = () => {
           </button>
         </div>
       </div>
+
       <div className='grid grid-cols-7 bg-gray-100 border-b border-gray-200'>
         {weekdays.map((day) => (
           <div
@@ -165,7 +194,11 @@ const Calendar = () => {
       </div>
       <div className='flex-grow grid grid-cols-7 grid-rows-6 gap-px bg-gray-200'>
         {calendarDays.map((dayObj, index) => {
-          const dayEvents = getEventsForDay(dayObj.day)
+          const dayEvents = getEventsForDay(
+            dayObj.day,
+            dayObj.month,
+            dayObj.year
+          )
           return (
             <div
               key={index}
@@ -185,22 +218,34 @@ const Calendar = () => {
                 {dayObj.day}
               </span>
               <div className='flex-grow overflow-y-auto'>
-                {dayEvents.slice(0, 3).map((event) => (
-                  <EventItem key={event.id} event={event} />
+                {dayEvents.map((event, eventIndex) => (
+                  <EventItem
+                    key={event.id || `draft-${eventIndex}`}
+                    event={event}
+                    isStart={
+                      new Date(event.start).toDateString() ===
+                      new Date(
+                        dayObj.year,
+                        dayObj.month,
+                        dayObj.day
+                      ).toDateString()
+                    }
+                    isEnd={
+                      new Date(event.end).toDateString() ===
+                      new Date(
+                        dayObj.year,
+                        dayObj.month,
+                        dayObj.day
+                      ).toDateString()
+                    }
+                  />
                 ))}
-                {dayEvents.length > 3 && (
-                  <div
-                    className='text-xs text-gray-500 cursor-pointer hover:text-gray-700'
-                    onClick={() => console.log('Show more events')}
-                  >
-                    +{dayEvents.length - 3} more
-                  </div>
-                )}
               </div>
             </div>
           )
         })}
       </div>
+
       {selectedEvent && (
         <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4'>
           <div className='bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl'>

@@ -1,16 +1,13 @@
-import {
-  ChevronDownIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from 'lucide-react'
-import { useState } from 'react'
+import { ChevronDownIcon } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
-import { materials, merchandisingItems } from '../../dataFile'
+
 import { useEventContext } from './EventProvider'
+import MaterialsSection from './MaterialsSection'
 import MerchandisingSection from './MerchandisingSection'
 const EventForm = () => {
-  const { addEvent } = useEventContext()
+  const { addEvent, updateDraftEvent } = useEventContext()
   const [formData, setFormData] = useState({
     eventType: 'Congreso',
     start: null,
@@ -31,8 +28,15 @@ const EventForm = () => {
     selectedMerchandising: [],
   })
 
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
+  useEffect(() => {
+    if (formData.start && formData.end) {
+      updateDraftEvent({
+        title: formData.eventType,
+        start: formData.start,
+        end: formData.end,
+      })
+    }
+  }, [formData.start, formData.end, formData.eventType])
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -146,34 +150,11 @@ const EventForm = () => {
     { value: '21', label: 'Sonche' },
   ]
 
-  const handleItemToggle = (itemId, stateKey, items) => {
-    setFormData((prevState) => {
-      const item = items.find((i) => i.id === itemId)
-      const updatedItems = prevState[stateKey].includes(item.name)
-        ? prevState[stateKey].filter((name) => name !== item.name)
-        : [...prevState[stateKey], item.name]
-      return { ...prevState, [stateKey]: updatedItems }
-    })
-  }
-
   const handleSubmit = (e) => {
     e.preventDefault()
-    addEvent({
-      id: Date.now(),
-      title: formData.eventType,
-      start: formData.start,
-      end: formData.end,
-      details: { ...formData },
-    })
-    console.log('Event added:', formData)
-    // Reset form or show confirmation
+    addEvent(formData)
+    // Reset your form here
   }
-
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = materials.slice(indexOfFirstItem, indexOfLastItem)
-
-  const paginate = (pageNumber) => setCurrentPage(pageNumber)
 
   return (
     <div className='flex flex-col h-screen bg-white'>
@@ -212,78 +193,7 @@ const EventForm = () => {
           />
 
           {formData.materials && (
-            <div className='space-y-4 border border-gray-200 rounded-md p-4'>
-              <h3 className='font-medium text-gray-700'>Materials</h3>
-              <div className='relative'>
-                <input
-                  type='text'
-                  placeholder='What do you want to look for?'
-                  className='w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-                />
-              </div>
-              <div className='space-y-2'>
-                {currentItems.map((material) => (
-                  <div
-                    key={material.id}
-                    className='flex items-center justify-between p-2 border border-gray-200 rounded-md'
-                  >
-                    <div className='flex items-center space-x-2'>
-                      <img
-                        src={material.image}
-                        alt={material.name}
-                        className='w-12 h-12 object-cover rounded'
-                      />
-                      <div>
-                        <p className='font-medium'>{material.name}</p>
-                        <p className='text-sm text-gray-500'>
-                          {material.available} disponible(s)
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type='button'
-                      onClick={() =>
-                        handleItemToggle(
-                          material.id,
-                          'selectedMaterials',
-                          materials
-                        )
-                      }
-                      className={`p-2 rounded-full ${
-                        formData.selectedMaterials.includes(material.name)
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-600'
-                      }`}
-                    >
-                      {formData.selectedMaterials.includes(material.name)
-                        ? '-'
-                        : '+'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className='flex justify-between items-center mt-4'>
-                <button
-                  type='button'
-                  onClick={() => paginate(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className='p-2 bg-gray-200 rounded-full disabled:opacity-50'
-                >
-                  <ChevronLeftIcon size={20} />
-                </button>
-                <span>
-                  {currentPage} / {Math.ceil(materials.length / itemsPerPage)}
-                </span>
-                <button
-                  type='button'
-                  onClick={() => paginate(currentPage + 1)}
-                  disabled={indexOfLastItem >= materials.length}
-                  className='p-2 bg-gray-200 rounded-full disabled:opacity-50'
-                >
-                  <ChevronRightIcon size={20} />
-                </button>
-              </div>
-            </div>
+            <MaterialsSection formData={formData} setFormData={setFormData} />
           )}
 
           <div className='grid grid-cols-2 gap-4'>
