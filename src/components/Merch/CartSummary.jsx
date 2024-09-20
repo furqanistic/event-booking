@@ -75,12 +75,6 @@ const CartSummary = ({ cartItems, removeFromCart, updateQuantity }) => {
               <span className='font-semibold text-gray-600'>Total Items:</span>
               <span className='font-bold text-gray-800'>{getTotalItems()}</span>
             </div>
-            <div className='flex justify-between items-center'>
-              <span className='font-semibold text-gray-600'>Total:</span>
-              <span className='font-bold text-gray-800'>
-                ${getTotalPrice().toFixed(2)}
-              </span>
-            </div>
           </div>
         </>
       )}

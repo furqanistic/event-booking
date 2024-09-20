@@ -3,13 +3,12 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from 'lucide-react'
-import moment from 'moment'
 import { useState } from 'react'
-import { Calendar, momentLocalizer } from 'react-big-calendar'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
-import { EventProvider, useEventContext } from './EventProvider'
-const localizer = momentLocalizer(moment)
+import { materials, merchandisingItems } from '../../dataFile'
+import { useEventContext } from './EventProvider'
+import MerchandisingSection from './MerchandisingSection'
 const EventForm = () => {
   const { addEvent } = useEventContext()
   const [formData, setFormData] = useState({
@@ -33,8 +32,7 @@ const EventForm = () => {
   })
 
   const [currentPage, setCurrentPage] = useState(1)
-  const [merchandisingTab, setMerchandisingTab] = useState('find')
-  const itemsPerPage = 3
+  const itemsPerPage = 5
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -46,14 +44,6 @@ const EventForm = () => {
 
   const handleDateChange = (date, name) => {
     setFormData((prev) => ({ ...prev, [name]: date }))
-  }
-
-  const handleCalendarSelect = ({ start, end }) => {
-    setFormData((prevState) => ({
-      ...prevState,
-      start,
-      end,
-    }))
   }
 
   const renderDropdown = (name, value, options) => (
@@ -156,96 +146,6 @@ const EventForm = () => {
     { value: '21', label: 'Sonche' },
   ]
 
-  const materials = [
-    {
-      id: 1,
-      name: 'Virtuo Vivo scanner',
-      image:
-        'https://straumannprod-h.assetsadobe2.com/is/image/content/dam/sites/digital/xy/discover/virtuo-vivo/Visual_Virtuo_Vivo_on_stand.png?fmt=png-alpha&wid=720',
-      available: 5,
-    },
-    {
-      id: 2,
-      name: 'NSK engines',
-      image:
-        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSw86dSJ_Y8lExTXdiGWv3l2GSwpUCXd68PzA&s',
-      available: 5,
-    },
-    {
-      id: 3,
-      name: 'Bonamic',
-      image:
-        'https://www.customelements.in/wp-content/uploads/2024/06/Bonamic-Racing-Rearsets-For-Yamaha-YZF-R3-2015-22-Y012RC05-1.webp',
-      available: 5,
-    },
-    {
-      id: 4,
-      name: 'Xenograf',
-      image:
-        'https://www.gobizkorea.com/image/goodsImage.do?goods_no=GS2017110602690&image_se_code=ADI3_THUMB10A',
-      available: 5,
-    },
-    {
-      id: 5,
-      name: 'Xenoflex Jeringa',
-      image:
-        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSfCH9Et7udvwLvZJnzJSReQs3Lgk1xEOsP2A&s',
-      available: 5,
-    },
-  ]
-
-  const merchandisingItems = [
-    {
-      id: 1,
-      name: 'Virtuo Vivo scanner',
-      image:
-        'https://img.freepik.com/free-vector/illustration-gallery-icon_53876-27002.jpg',
-      available: 5,
-    },
-    {
-      id: 2,
-      name: 'NSK engines',
-      image:
-        'https://img.freepik.com/free-vector/illustration-gallery-icon_53876-27002.jpg',
-      available: 5,
-    },
-    {
-      id: 3,
-      name: 'Bonamic',
-      image:
-        'https://img.freepik.com/free-vector/illustration-gallery-icon_53876-27002.jpg',
-      available: 5,
-    },
-    {
-      id: 4,
-      name: 'Xenograf',
-      image:
-        'https://img.freepik.com/free-vector/illustration-gallery-icon_53876-27002.jpg',
-      available: 5,
-    },
-    {
-      id: 5,
-      name: 'Xenoflex Jeringa',
-      image:
-        'https://img.freepik.com/free-vector/illustration-gallery-icon_53876-27002.jpg',
-      available: 5,
-    },
-    {
-      id: 6,
-      name: 'Item 6',
-      image:
-        'https://img.freepik.com/free-vector/illustration-gallery-icon_53876-27002.jpg',
-      available: 3,
-    },
-    {
-      id: 7,
-      name: 'Item 7',
-      image:
-        'https://img.freepik.com/free-vector/illustration-gallery-icon_53876-27002.jpg',
-      available: 2,
-    },
-  ]
-
   const handleItemToggle = (itemId, stateKey, items) => {
     setFormData((prevState) => {
       const item = items.find((i) => i.id === itemId)
@@ -272,55 +172,6 @@ const EventForm = () => {
   const indexOfLastItem = currentPage * itemsPerPage
   const indexOfFirstItem = indexOfLastItem - itemsPerPage
   const currentItems = materials.slice(indexOfFirstItem, indexOfLastItem)
-
-  const indexOfLastMerchandising = currentPage * itemsPerPage
-  const indexOfFirstMerchandising = indexOfLastMerchandising - itemsPerPage
-  const currentMerchandising = merchandisingItems.slice(
-    indexOfFirstMerchandising,
-    indexOfLastMerchandising
-  )
-
-  const MerchandisingList = () => (
-    <div className='space-y-2'>
-      {currentMerchandising.map((item) => (
-        <div
-          key={item.id}
-          className='flex items-center justify-between p-2 border border-gray-200 rounded-md'
-        >
-          <div className='flex items-center space-x-2'>
-            <img
-              src={item.image}
-              alt={item.name}
-              className='w-12 h-12 object-cover rounded'
-            />
-            <div>
-              <p className='font-medium'>{item.name}</p>
-              <p className='text-sm text-gray-500'>
-                {item.available} available(s)
-              </p>
-            </div>
-          </div>
-          <button
-            type='button'
-            onClick={() =>
-              handleItemToggle(
-                item.id,
-                'selectedMerchandising',
-                merchandisingItems
-              )
-            }
-            className={`w-8 h-8 flex items-center justify-center ${
-              formData.selectedMerchandising.includes(item.name)
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-600'
-            } rounded-md`}
-          >
-            {formData.selectedMerchandising.includes(item.name) ? '-' : '+'}
-          </button>
-        </div>
-      ))}
-    </div>
-  )
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber)
 
@@ -385,7 +236,7 @@ const EventForm = () => {
                       <div>
                         <p className='font-medium'>{material.name}</p>
                         <p className='text-sm text-gray-500'>
-                          {material.available} available(s)
+                          {material.available} disponible(s)
                         </p>
                       </div>
                     </div>
@@ -549,58 +400,10 @@ const EventForm = () => {
           />
 
           {formData.merchandising && (
-            <div className='space-y-4 border border-gray-200 rounded-md p-4'>
-              <h3 className='font-medium text-gray-700'>Merchandising</h3>
-              <div className='flex border-b'>
-                <button
-                  className={`flex-1 py-2 ${
-                    merchandisingTab === 'find'
-                      ? 'border-b-2 border-blue-500'
-                      : ''
-                  }`}
-                  onClick={() => setMerchandisingTab('find')}
-                >
-                  Find
-                </button>
-                <button
-                  className={`flex-1 py-2 ${
-                    merchandisingTab === 'request'
-                      ? 'border-b-2 border-blue-500'
-                      : ''
-                  }`}
-                  onClick={() => setMerchandisingTab('request')}
-                >
-                  Your request
-                </button>
-              </div>
-              {merchandisingTab === 'find' && (
-                <>
-                  <div className='relative'>
-                    <input
-                      type='text'
-                      placeholder='What do you want to look for?'
-                      className='w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    />
-                  </div>
-                  <MerchandisingList />
-                  {/* ... (keep pagination buttons) */}
-                </>
-              )}
-              {merchandisingTab === 'request' && (
-                <div className='p-4 bg-gray-100 rounded-md'>
-                  <h4 className='font-medium mb-2'>Selected Merchandising:</h4>
-                  {formData.selectedMerchandising.length > 0 ? (
-                    <ul className='list-disc pl-5'>
-                      {formData.selectedMerchandising.map((item, index) => (
-                        <li key={index}>{item}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>No items selected.</p>
-                  )}
-                </div>
-              )}
-            </div>
+            <MerchandisingSection
+              formData={formData}
+              setFormData={setFormData}
+            />
           )}
 
           <div className='space-y-4 border border-gray-200 rounded-md p-4'>
