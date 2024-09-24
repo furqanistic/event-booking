@@ -1,5 +1,6 @@
 import { PencilIcon, PlusIcon, TrashIcon } from 'lucide-react'
 import { useState } from 'react'
+import { Toaster, toast } from 'react-hot-toast'
 import { useQuery, useQueryClient } from 'react-query'
 import { axiosInstance } from '../config'
 import Layout from './Layout'
@@ -19,50 +20,70 @@ const InventoryManagementPage = () => {
     'merchandising',
     () => axiosInstance.get('merchandising').then((res) => res.data.data.items)
   )
+
+  const showNotification = (message, type = 'success') => {
+    toast.dismiss() // Dismiss any existing toasts
+    toast[type](message, {
+      duration: 3000,
+      position: 'top-center',
+    })
+  }
+
   const handleCreate = async (newItem) => {
     try {
       await axiosInstance.post(`${activeTab}`, newItem)
-      queryClient.invalidateQueries(activeTab)
-      setIsModalOpen(false)
+      await queryClient.invalidateQueries(activeTab)
+      closeModal()
+      showNotification('Item created successfully')
     } catch (error) {
       console.error('Error creating item:', error)
+      showNotification('Failed to create item', 'error')
     }
   }
 
   const handleUpdate = async (updatedItem) => {
     try {
       await axiosInstance.patch(`${activeTab}/${updatedItem._id}`, updatedItem)
-      queryClient.invalidateQueries(activeTab)
-      setIsModalOpen(false)
+      await queryClient.invalidateQueries(activeTab)
+      closeModal()
+      showNotification('Item updated successfully')
     } catch (error) {
       console.error('Error updating item:', error)
+      showNotification('Failed to update item', 'error')
     }
   }
 
   const handleDelete = async (id) => {
     try {
       await axiosInstance.delete(`${activeTab}/${id}`)
-      queryClient.invalidateQueries(activeTab)
+      await queryClient.invalidateQueries(activeTab)
+      showNotification('Item deleted successfully')
     } catch (error) {
       console.error('Error deleting item:', error)
+      showNotification('Failed to delete item', 'error')
     }
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     const formData = new FormData(e.target)
     const itemData = Object.fromEntries(formData.entries())
 
     if (currentItem) {
-      handleUpdate({ ...currentItem, ...itemData })
+      await handleUpdate({ ...currentItem, ...itemData })
     } else {
-      handleCreate(itemData)
+      await handleCreate(itemData)
     }
   }
 
   const openModal = (item = null) => {
     setCurrentItem(item)
     setIsModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setCurrentItem(null)
   }
 
   const renderTable = (items) => (
@@ -122,6 +143,7 @@ const InventoryManagementPage = () => {
   return (
     <Layout>
       <div className='container mx-auto px-4 sm:px-8'>
+        <Toaster position='top-right' />
         <div className='py-8'>
           <div className='flex justify-between items-center'>
             <h2 className='text-2xl font-semibold leading-tight'>
@@ -246,7 +268,7 @@ const InventoryManagementPage = () => {
                     </button>
                     <button
                       type='button'
-                      onClick={() => setIsModalOpen(false)}
+                      onClick={closeModal}
                       className='mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm'
                     >
                       Cancel

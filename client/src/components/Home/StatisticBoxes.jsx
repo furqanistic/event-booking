@@ -69,7 +69,7 @@ const StatisticBoxes = () => {
             </div>
             <div className='flex flex-col sm:flex-row gap-4'>
               <StatBox
-                number='0'
+                number={fetchedTotalEventsData.data.totalEvents}
                 text='Eventos registrados'
                 icon={Calendar}
                 color='bg-blue-700'

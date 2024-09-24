@@ -61,6 +61,23 @@ const Calendar = () => {
     return response.data
   })
 
+  const ColorLegend = () => (
+    <div className='flex flex-wrap items-center justify-center gap-4 p-2 bg-gray-100 text-xs'>
+      <div className='flex items-center'>
+        <div className='w-4 h-4 bg-blue-100 mr-2'></div>
+        <span>Event</span>
+      </div>
+      <div className='flex items-center'>
+        <div className='w-4 h-4 bg-orange-100 mr-2'></div>
+        <span>Return</span>
+      </div>
+      <div className='flex items-center'>
+        <div className='w-4 h-4 bg-purple-100 mr-2'></div>
+        <span>Cleaning</span>
+      </div>
+    </div>
+  )
+
   // Extract events from the nested structure
   const fetchedEvents = fetchedEventsData.data?.events || []
 
@@ -256,7 +273,7 @@ const Calendar = () => {
           </button>
         </div>
       </div>
-
+      <ColorLegend />
       <div className='grid grid-cols-7 bg-gray-100 border-b border-gray-200 sticky top-16 '>
         {weekdays.map((day) => (
           <div

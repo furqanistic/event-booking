@@ -305,6 +305,8 @@ const EventForm = () => {
         ),
       ]
       await Promise.all(updatePromises)
+      console.log(updatePromises)
+      console.log('run 2')
     } catch (error) {
       console.error('Error updating inventory:', error)
       throw error
@@ -422,32 +424,6 @@ const EventForm = () => {
             <MaterialsSection formData={formData} setFormData={setFormData} />
           )}
 
-          <div className='grid grid-cols-2 gap-4'>
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-1'>
-                Start Date & Time
-              </label>
-              <DatePicker
-                selected={formData.start}
-                onChange={(date) => handleDateChange(date, 'start')}
-                showTimeSelect
-                dateFormat='MMMM d, yyyy h:mm aa'
-                className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
-              />
-            </div>
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-1'>
-                End Date & Time
-              </label>
-              <DatePicker
-                selected={formData.end}
-                onChange={(date) => handleDateChange(date, 'end')}
-                showTimeSelect
-                dateFormat='MMMM d, yyyy h:mm aa'
-                className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
-              />
-            </div>
-          </div>
           {/* <Toggle
             name='sala'
             checked={formData.sala}
@@ -541,7 +517,32 @@ const EventForm = () => {
               setFormData={setFormData}
             />
           )}
-
+          <div className='grid grid-cols-2 gap-4'>
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-1'>
+                Start Date & Time
+              </label>
+              <DatePicker
+                selected={formData.start}
+                onChange={(date) => handleDateChange(date, 'start')}
+                showTimeSelect
+                dateFormat='MMMM d, yyyy h:mm aa'
+                className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
+              />
+            </div>
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-1'>
+                End Date & Time
+              </label>
+              <DatePicker
+                selected={formData.end}
+                onChange={(date) => handleDateChange(date, 'end')}
+                showTimeSelect
+                dateFormat='MMMM d, yyyy h:mm aa'
+                className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
+              />
+            </div>
+          </div>
           <div className='space-y-4 border border-gray-200 rounded-md p-4'>
             <h3 className='font-medium text-gray-700'>Dirección</h3>
 
