@@ -18,7 +18,11 @@ const createSendToken = (user, statusCode, res) => {
     const cookieOptions = {
       expires: new Date(
         Date.now() +
-          (process.env.JWT_COOKIE_EXPIRES_IN || 1) * 24 * 60 * 60 * 1000
+          (parseInt(process.env.JWT_COOKIE_EXPIRES_IN) || 1) *
+            24 *
+            60 *
+            60 *
+            1000
       ),
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -26,6 +30,7 @@ const createSendToken = (user, statusCode, res) => {
 
     res.cookie('jwt', token, cookieOptions)
 
+    // Remove password from output
     user.password = undefined
 
     res.status(statusCode).json({
@@ -43,53 +48,52 @@ const createSendToken = (user, statusCode, res) => {
 
 export const signup = async (req, res, next) => {
   try {
+    const { name, email, password, role } = req.body
+
+    // Check if all required fields are provided
+    if (!name || !email || !password) {
+      return next(createError(400, 'Please provide name, email, and password'))
+    }
+
+    // Check if user with this email already exists
+    const existingUser = await User.findOne({ email })
+    if (existingUser) {
+      return next(createError(400, 'User with this email already exists'))
+    }
+
+    // Create new user
     const newUser = await User.create({
-      name: req.body.name,
-      email: req.body.email,
-      password: req.body.password,
-      role: req.body.role,
-      businessName: req.body.businessName,
-      phoneNumber: req.body.phoneNumber,
-      address: req.body.address,
+      name,
+      email,
+      password,
+      role,
     })
 
+    // Send token to the new user
     createSendToken(newUser, 201, res)
   } catch (err) {
     console.error('Error in signup:', err)
-    next(err)
+    next(createError(500, 'An unexpected error occurred during signup'))
   }
 }
 
 export const signin = async (req, res, next) => {
   try {
     const { email, password } = req.body
-
     if (!email || !password) {
-      return res.status(400).json({
-        status: 'fail',
-        message: 'Please provide email and password',
-      })
+      return next(createError(400, 'Please provide email and password'))
     }
-
     const user = await User.findOne({ email }).select('+password')
 
     if (!user || !(await user.correctPassword(password, user.password))) {
-      return res.status(401).json({
-        status: 'fail',
-        message: 'Incorrect email or password',
-      })
+      return next(createError(401, 'Incorrect email or password'))
     }
-
-    user.lastLogin = Date.now()
+    user.lastLogin = new Date()
     await user.save({ validateBeforeSave: false })
-
     createSendToken(user, 200, res)
   } catch (err) {
     console.error('Error in signin:', err)
-    res.status(500).json({
-      status: 'error',
-      message: 'An unexpected error occurred',
-    })
+    next(createError(500, 'An unexpected error occurred'))
   }
 }
 

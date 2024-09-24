@@ -21,24 +21,8 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['Admin', 'Business', 'Regular'],
-      default: 'Regular',
-    },
-    businessName: {
-      type: String,
-      trim: true,
-    },
-    phoneNumber: {
-      type: String,
-      trim: true,
-    },
-
-    address: {
-      street: String,
-      city: String,
-      state: String,
-      country: String,
-      zipCode: String,
+      enum: ['Admin', 'User'],
+      default: 'User',
     },
     registrationDate: {
       type: Date,

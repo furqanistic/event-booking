@@ -2,13 +2,15 @@ import { ChevronDownIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
-
+import toast from 'react-hot-toast'
+import { axiosInstance } from '../../config'
 import { useEventContext } from './EventProvider'
 import MaterialsSection from './MaterialsSection'
 import MerchandisingSection from './MerchandisingSection'
+
 const EventForm = () => {
-  const { addEvent, updateDraftEvent, checkMaterialAvailability } =
-    useEventContext()
+  const { updateDraftEvent } = useEventContext()
+  const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     eventType: 'Congreso',
     start: null,
@@ -19,16 +21,55 @@ const EventForm = () => {
     merchandising: false,
     address: '',
     reference: '',
-    department: '1',
-    province: '1',
-    district: '1',
+    department: 'Amazonas',
+    province: 'Chachapoyas',
+    district: 'Chachapoyas',
+
     selectedMaterials: [],
     roomCapacity: '',
     selectedRoom: '',
     assistants: '',
+    destination: 'ABANCAY',
     selectedMerchandising: [],
   })
   const [formError, setFormError] = useState(null)
+
+  const destinationOptions = [
+    { value: 'ABANCAY', label: 'ABANCAY' },
+    { value: 'AREQUIPA', label: 'AREQUIPA' },
+    { value: 'AYACUCHO', label: 'AYACUCHO' },
+    { value: 'BARRANCA', label: 'BARRANCA' },
+    { value: 'CAJAMARCA', label: 'CAJAMARCA' },
+    { value: 'CAMANA', label: 'CAMANA' },
+    { value: 'CHICLAYO', label: 'CHICLAYO' },
+    { value: 'CHIMBOTE', label: 'CHIMBOTE' },
+    { value: 'CHINCHA', label: 'CHINCHA' },
+    { value: 'HUAURA', label: 'HUAURA' },
+    { value: 'HUARAL', label: 'HUARAL' },
+    { value: 'HUACHO', label: 'HUACHO' },
+    { value: 'HUANCAYO', label: 'HUANCAYO' },
+    { value: 'HUARAZ', label: 'HUARAZ' },
+    { value: 'ICA', label: 'ICA' },
+    { value: 'ILO', label: 'ILO' },
+    { value: 'JULIACA', label: 'JULIACA' },
+    { value: 'MOQUEGUA', label: 'MOQUEGUA' },
+    { value: 'NAZCA', label: 'NAZCA' },
+    { value: 'PISCO', label: 'PISCO' },
+    { value: 'PIURA', label: 'PIURA' },
+    { value: 'PUNO', label: 'PUNO' },
+    { value: 'CUSCO', label: 'CUSCO' },
+    { value: 'SULLANA', label: 'SULLANA' },
+    { value: 'TACNA', label: 'TACNA' },
+    { value: 'TRUJILLO', label: 'TRUJILLO' },
+    { value: 'TUMBES', label: 'TUMBES' },
+    { value: 'ANDAHUAYLAS', label: 'ANDAHUAYLAS' },
+    { value: 'HUANUCO', label: 'HUANUCO' },
+    { value: 'HUNCAVELICA', label: 'HUNCAVELICA' },
+    { value: 'IQUITOS', label: 'IQUITOS' },
+    { value: 'PUCALLPA', label: 'PUCALLPA' },
+    { value: 'TARAPOTO', label: 'TARAPOTO' },
+    { value: 'SAN MARTIN', label: 'SAN MARTIN' },
+  ]
 
   useEffect(() => {
     if (formData.start && formData.end) {
@@ -38,6 +79,7 @@ const EventForm = () => {
         end: formData.end,
         details: {
           selectedMaterials: formData.selectedMaterials,
+          selectedMerchandising: formData.selectedMerchandising,
         },
       })
     }
@@ -46,6 +88,7 @@ const EventForm = () => {
     formData.end,
     formData.eventType,
     formData.selectedMaterials,
+    formData.selectedMerchandising,
   ])
 
   const handleInputChange = (e) => {
@@ -71,9 +114,10 @@ const EventForm = () => {
       merchandising: false,
       address: '',
       reference: '',
-      department: '1',
-      province: '1',
-      district: '1',
+      department: '',
+      province: '',
+      district: '',
+      destination: '',
       selectedMaterials: [],
       roomCapacity: '',
       selectedRoom: '',
@@ -87,7 +131,7 @@ const EventForm = () => {
     <div className='relative'>
       <select
         name={name}
-        value={value}
+        value={value || options[0].label} // Use the first option as default if value is empty
         onChange={handleInputChange}
         className='w-full border border-gray-300 rounded-md p-2 appearance-none'
       >
@@ -183,46 +227,159 @@ const EventForm = () => {
     { value: '21', label: 'Sonche' },
   ]
 
-  const handleSubmit = (e) => {
+  const checkInventoryAvailability = async () => {
+    try {
+      const materialPromise = axiosInstance.post(
+        '/materials/check-availability',
+        {
+          items: formData.selectedMaterials,
+          startDate: formData.start,
+          endDate: formData.end,
+        }
+      )
+
+      const merchandisingPromise = axiosInstance.post(
+        '/merchandising/check-availability',
+        {
+          items: formData.selectedMerchandising,
+          startDate: formData.start,
+          endDate: formData.end,
+        }
+      )
+
+      const [materialResponse, merchandisingResponse] = await Promise.all([
+        materialPromise,
+        merchandisingPromise,
+      ])
+
+      console.log('Material availability response:', materialResponse.data)
+      console.log(
+        'Merchandising availability response:',
+        merchandisingResponse.data
+      )
+
+      if (
+        !materialResponse.data.available ||
+        !merchandisingResponse.data.available
+      ) {
+        const unavailableItems = [
+          ...materialResponse.data.items.filter((item) => !item.available),
+          ...merchandisingResponse.data.items.filter((item) => !item.available),
+        ]
+
+        const errorMessages = unavailableItems.map(
+          (item) =>
+            `${item.name}: Requested ${item.requestedQuantity}, Available ${item.availableQuantity}`
+        )
+
+        setFormError(
+          `Some items are not available: ${errorMessages.join('; ')}`
+        )
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error checking inventory availability:', error)
+      setFormError('Error checking inventory availability. Please try again.')
+      return false
+    }
+  }
+
+  const updateInventory = async () => {
+    try {
+      const updatePromises = [
+        ...formData.selectedMaterials.map((item) =>
+          axiosInstance.patch(`/materials/${item._id}`, {
+            quantity: item.quantity,
+            startDate: formData.start,
+            endDate: formData.end,
+          })
+        ),
+        ...formData.selectedMerchandising.map((item) =>
+          axiosInstance.patch(`/merchandising/${item._id}`, {
+            quantity: item.quantity,
+            startDate: formData.start,
+            endDate: formData.end,
+          })
+        ),
+      ]
+      await Promise.all(updatePromises)
+    } catch (error) {
+      console.error('Error updating inventory:', error)
+      throw error
+    }
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!formData.start || !formData.end) {
       setFormError('Please select start and end dates for the event.')
       return
     }
 
-    const isAvailable = checkMaterialAvailability(
-      formData.start,
-      formData.selectedMaterials
-    )
-
-    if (!isAvailable) {
-      setFormError(
-        'The selected materials are not available for the chosen dates.'
-      )
-      return
-    }
+    setIsLoading(true)
+    setFormError(null)
 
     const newEvent = {
-      title: formData.eventType,
+      eventType: formData.eventType,
       start: formData.start,
       end: formData.end,
-      details: {
-        eventType: formData.eventType,
-        materials: formData.materials,
-        selectedMaterials: formData.selectedMaterials,
-        trainer: formData.trainer,
-        merchandising: formData.merchandising,
-        selectedMerchandising: formData.selectedMerchandising,
-        address: formData.address,
-        reference: formData.reference,
-        department: formData.department,
-        province: formData.province,
-        district: formData.district,
-      },
+      materials: formData.materials,
+      selectedMaterials: formData.selectedMaterials.map((material) => ({
+        materialId: material._id,
+        name: material.name,
+        quantity: material.quantity,
+      })),
+      trainer: formData.trainer,
+      merchandising: formData.merchandising,
+      selectedMerchandising: formData.selectedMerchandising.map((item) => ({
+        merchandisingId: item._id,
+        name: item.name,
+        quantity: item.quantity,
+      })),
+      address: formData.address,
+      reference: formData.reference,
+      department: formData.department,
+      province: formData.province,
+      district: formData.district,
+      destination: formData.destination,
     }
 
-    addEvent(newEvent)
-    resetForm()
+    setIsLoading(true)
+    setFormError(null)
+
+    try {
+      await updateInventory()
+      const response = await axiosInstance.post('/events/', newEvent)
+
+      toast.success('Event successfully registered!', {
+        duration: 5000,
+        style: {
+          background: 'rgb(29, 232, 29)',
+          color: '#fff',
+        },
+      })
+
+      resetForm()
+    } catch (error) {
+      console.error('Error creating event:', error.response || error)
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        'An unknown error occurred'
+      setFormError(`Failed to create event. ${errorMessage}`)
+
+      toast.error(`Failed to create event. ${errorMessage}`, {
+        duration: 5000,
+        style: {
+          background: 'rgb(249, 167, 167)',
+          color: 'black',
+        },
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -438,6 +595,16 @@ const EventForm = () => {
               </label>
               {renderDropdown('district', formData.district, districtOptions)}
             </div>
+            <div>
+              <label className='block text-sm text-gray-600 mb-1'>
+                Destino
+              </label>
+              {renderDropdown(
+                'destination',
+                formData.destination,
+                destinationOptions
+              )}
+            </div>
           </div>
         </form>
       </div>
@@ -456,8 +623,9 @@ const EventForm = () => {
           type='button'
           className='w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300'
           onClick={handleSubmit}
+          disabled={isLoading}
         >
-          Registrar evento
+          {isLoading ? 'Creating...' : 'Registrar evento'}
         </button>
       </div>
     </div>

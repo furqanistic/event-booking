@@ -1,15 +1,40 @@
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
-import { ChevronLeftIcon, ChevronRightIcon, Download, X } from 'lucide-react'
+import {
+  CalendarIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  Download,
+  X,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useQuery } from 'react-query'
+import { axiosInstance } from '../../config'
 import EventDetails from './EventDetails'
 import { useEventContext } from './EventProvider'
+
+const LoadingSpinner = () => (
+  <div className='absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-20'>
+    <div className='relative w-24 h-24'>
+      <div className='absolute top-0 left-0 w-full h-full border-8 border-blue-200 rounded-full animate-pulse'></div>
+      <div className='absolute top-0 left-0 w-full h-full border-t-8 border-blue-500 rounded-full animate-spin'></div>
+      <CalendarIcon
+        className='absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blue-500'
+        size={32}
+      />
+    </div>
+    <p className='absolute bottom-4 left-1/2 transform -translate-x-1/2 text-lg font-semibold text-blue-600'>
+      Loading events...
+    </p>
+  </div>
+)
 
 const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [calendarDays, setCalendarDays] = useState([])
   const [selectedEvent, setSelectedEvent] = useState(null)
-  const { events, draftEvent, checkMaterialAvailability } = useEventContext()
+  const { draftEvent, checkMaterialAvailability } = useEventContext()
+
   const months = [
     'enero',
     'febrero',
@@ -26,9 +51,21 @@ const Calendar = () => {
   ]
   const weekdays = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
 
+  const {
+    data: fetchedEventsData = [],
+    isLoading,
+    error,
+  } = useQuery('events', async () => {
+    const response = await axiosInstance.get('/events')
+    return response.data
+  })
+
+  // Extract events from the nested structure
+  const fetchedEvents = fetchedEventsData.data?.events || []
+
   const getEventsForDay = (day, month, year) => {
     const currentDay = new Date(year, month, day)
-    const dayEvents = events.filter((event) => {
+    const dayEvents = fetchedEvents.filter((event) => {
       const eventStart = new Date(event.start)
       const eventEnd = new Date(event.end)
       return currentDay >= eventStart && currentDay <= eventEnd
@@ -117,13 +154,11 @@ const Calendar = () => {
       new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
     )
   }
-
   const nextMonth = () => {
     setCurrentDate(
       new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
     )
   }
-
   const isToday = (day) => {
     const today = new Date()
     return (
@@ -149,17 +184,19 @@ const Calendar = () => {
       }`}
       onClick={() => !event.isDraft && setSelectedEvent(event)}
     >
-      <div className='font-semibold truncate'>{event.title}</div>
+      <div className='font-semibold truncate'>
+        {event.title || event.eventType}
+      </div>
       <div className='text-gray-600 text-xs'>
         {formatTime(event.start)} - {formatTime(event.end)}
       </div>
     </div>
   )
-
   return (
     <div className='flex flex-col h-full bg-white'>
-      <div className='flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50'>
-        <h2 className='text-xl font-semibold text-gray-800 mb-2 sm:mb-0'>
+      <div className='flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 sticky top-0 '>
+        <h2 className='text-xl font-semibold text-gray-800 mb-2 sm:mb-0 flex items-center'>
+          <CalendarIcon className='mr-2' />
           {months[currentDate.getMonth()]} de {currentDate.getFullYear()}
         </h2>
         <div className='flex items-center space-x-2'>
@@ -184,7 +221,7 @@ const Calendar = () => {
         </div>
       </div>
 
-      <div className='grid grid-cols-7 bg-gray-100 border-b border-gray-200'>
+      <div className='grid grid-cols-7 bg-gray-100 border-b border-gray-200 sticky top-16 '>
         {weekdays.map((day) => (
           <div
             key={day}
@@ -194,52 +231,63 @@ const Calendar = () => {
           </div>
         ))}
       </div>
-      <div className='flex-grow grid grid-cols-7 grid-rows-6 gap-px bg-gray-200'>
-        {calendarDays.map((dayObj, index) => {
-          const {
-            events: dayEvents,
-            isDraftDay,
-            isAvailable,
-          } = getEventsForDay(dayObj.day, dayObj.month, dayObj.year)
-          return (
-            <div
-              key={index}
-              className={`p-1 ${
-                dayObj.currentMonth ? 'bg-white' : 'bg-gray-50 text-gray-400'
-              } ${isToday(dayObj.day) ? 'bg-blue-50' : ''} 
-              ${isDraftDay ? 'bg-yellow-50' : ''}
-              ${!isAvailable ? 'bg-red-100' : ''}
-              overflow-hidden flex flex-col`}
-            >
-              <span
-                className={`text-xs sm:text-sm font-semibold ${
-                  isToday(dayObj.day) ? 'text-blue-600' : ''
-                }`}
+
+      <div className='flex-grow overflow-y-auto relative'>
+        {isLoading && <LoadingSpinner />}
+        {error && (
+          <div className='absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-20'>
+            <p className='text-red-500 text-lg'>
+              Error loading events. Please try again later.
+            </p>
+          </div>
+        )}
+        <div className='grid grid-cols-7 auto-rows-fr gap-px bg-gray-200 p-px min-h-full'>
+          {calendarDays.map((dayObj, index) => {
+            const {
+              events: dayEvents,
+              isDraftDay,
+              isAvailable,
+            } = getEventsForDay(dayObj.day, dayObj.month, dayObj.year)
+            return (
+              <div
+                key={index}
+                className={`p-1 ${
+                  dayObj.currentMonth ? 'bg-white' : 'bg-gray-50 text-gray-400'
+                } ${isToday(dayObj.day) ? 'bg-blue-50' : ''} 
+                ${isDraftDay ? 'bg-yellow-50' : ''}
+                ${!isAvailable ? 'bg-red-100' : ''}
+                overflow-hidden flex flex-col min-h-[100px]`}
               >
-                {dayObj.day}
-              </span>
-              <div className='flex-grow overflow-y-auto'>
-                {dayEvents.map((event, eventIndex) => (
-                  <EventItem
-                    key={event.id || `event-${eventIndex}`}
-                    event={event}
-                  />
-                ))}
+                <span
+                  className={`text-xs sm:text-sm font-semibold ${
+                    isToday(dayObj.day) ? 'text-blue-600' : ''
+                  }`}
+                >
+                  {dayObj.day}
+                </span>
+                <div className='flex-grow overflow-y-auto'>
+                  {dayEvents.map((event, eventIndex) => (
+                    <EventItem
+                      key={event.id || `event-${eventIndex}`}
+                      event={event}
+                    />
+                  ))}
+                </div>
+                {!isAvailable && (
+                  <div className='text-xs text-red-600 mt-1'>Unavailable</div>
+                )}
               </div>
-              {!isAvailable && (
-                <div className='text-xs text-red-600 mt-1'>Unavailable</div>
-              )}
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
 
       {selectedEvent && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4'>
-          <div className='bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl'>
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
+          <div className='bg-white rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col shadow-xl'>
             <div className='sticky top-0 bg-white z-10 flex justify-between items-center p-4 border-b'>
               <h3 className='font-bold text-xl text-gray-800'>
-                {selectedEvent.title}
+                {selectedEvent.title || selectedEvent.eventType}
               </h3>
               <button
                 onClick={() => setSelectedEvent(null)}
@@ -248,7 +296,12 @@ const Calendar = () => {
                 <X size={24} />
               </button>
             </div>
-            <EventDetails event={selectedEvent} />
+            <div className='flex-grow overflow-y-auto p-4'>
+              <EventDetails
+                event={selectedEvent}
+                onClose={() => setSelectedEvent(null)}
+              />
+            </div>
             <div className='sticky bottom-0 bg-white z-10 flex justify-end p-4 border-t'>
               <button
                 onClick={generatePDF}

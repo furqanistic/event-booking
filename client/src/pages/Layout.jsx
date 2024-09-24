@@ -6,6 +6,7 @@ import {
   Megaphone,
   Settings,
   ShoppingBag,
+  SquareChartGantt,
 } from 'lucide-react'
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
@@ -17,6 +18,7 @@ const Sidebar = () => {
     { icon: Megaphone, label: 'News', path: '/novedades' },
     { icon: Calendar, label: 'Events', path: '/nuevo-evento' },
     { icon: Clock, label: 'Appointments', path: '/appointment' },
+    { icon: SquareChartGantt, label: 'Manage', path: '/manage' },
     { icon: ShoppingBag, label: 'Merch', path: '/merch' },
     { icon: Settings, label: 'Settings', path: '/mi-cuenta' },
   ]
