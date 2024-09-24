@@ -10,6 +10,7 @@ import {
 import { useEffect, useState } from 'react'
 import { useQuery } from 'react-query'
 import { axiosInstance } from '../../config'
+import { destinationData } from '../../dataFile'
 import EventDetails from './EventDetails'
 import { useEventContext } from './EventProvider'
 
@@ -68,7 +69,21 @@ const Calendar = () => {
     const dayEvents = fetchedEvents.filter((event) => {
       const eventStart = new Date(event.start)
       const eventEnd = new Date(event.end)
-      return currentDay >= eventStart && currentDay <= eventEnd
+      const destinationInfo = destinationData[event.destination] || {
+        daysToReach: 0,
+        daysToReturn: 0,
+        cleaningDays: 0,
+      }
+
+      const returnStart = new Date(eventEnd)
+      returnStart.setDate(returnStart.getDate() + 1)
+      const returnEnd = new Date(returnStart)
+      returnEnd.setDate(returnEnd.getDate() + destinationInfo.daysToReturn - 1)
+
+      const cleaningDay = new Date(returnEnd)
+      cleaningDay.setDate(cleaningDay.getDate() + 1)
+
+      return currentDay >= eventStart && currentDay <= cleaningDay
     })
 
     let isDraftDay = false
@@ -84,6 +99,45 @@ const Calendar = () => {
     )
 
     return { events: dayEvents, isDraftDay, isAvailable }
+  }
+
+  const EventItem = ({ event, currentDate }) => {
+    const eventStart = new Date(event.start)
+    const eventEnd = new Date(event.end)
+    const destinationInfo = destinationData[event.destination] || {
+      daysToReach: 0,
+      daysToReturn: 0,
+      cleaningDays: 0,
+    }
+
+    const returnStart = new Date(eventEnd)
+    returnStart.setDate(returnStart.getDate() + 1)
+    const returnEnd = new Date(returnStart)
+    returnEnd.setDate(returnEnd.getDate() + destinationInfo.daysToReturn - 1)
+
+    const cleaningDay = new Date(returnEnd)
+    cleaningDay.setDate(cleaningDay.getDate() + 1)
+
+    let bgColor = 'bg-blue-100' // Default color for event days
+
+    if (currentDate > eventEnd && currentDate <= returnEnd) {
+      bgColor = 'bg-orange-100' // Color for return days
+    } else if (currentDate.getTime() === cleaningDay.getTime()) {
+      bgColor = 'bg-purple-100' // Color for cleaning day
+    }
+    return (
+      <div
+        className={`p-1 mb-1 rounded text-xs cursor-pointer hover:bg-opacity-75 transition-colors duration-200 ${bgColor}`}
+        onClick={() => !event.isDraft && setSelectedEvent(event)}
+      >
+        <div className='font-semibold truncate'>
+          {event.title || event.eventType}
+        </div>
+        <div className='text-gray-600 text-xs'>
+          {formatTime(event.start)} - {formatTime(event.end)}
+        </div>
+      </div>
+    )
   }
 
   const generatePDF = async () => {
@@ -174,24 +228,6 @@ const Calendar = () => {
     })
   }
 
-  const EventItem = ({ event }) => (
-    <div
-      className={`p-1 mb-1 rounded text-xs cursor-pointer hover:bg-opacity-75 transition-colors duration-200 
-      ${
-        event.isDraft
-          ? 'bg-yellow-100 border-yellow-500'
-          : 'bg-blue-100 border-blue-500'
-      }`}
-      onClick={() => !event.isDraft && setSelectedEvent(event)}
-    >
-      <div className='font-semibold truncate'>
-        {event.title || event.eventType}
-      </div>
-      <div className='text-gray-600 text-xs'>
-        {formatTime(event.start)} - {formatTime(event.end)}
-      </div>
-    </div>
-  )
   return (
     <div className='flex flex-col h-full bg-white'>
       <div className='flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 sticky top-0 '>
@@ -248,6 +284,9 @@ const Calendar = () => {
               isDraftDay,
               isAvailable,
             } = getEventsForDay(dayObj.day, dayObj.month, dayObj.year)
+
+            const currentDate = new Date(dayObj.year, dayObj.month, dayObj.day)
+
             return (
               <div
                 key={index}
@@ -270,6 +309,7 @@ const Calendar = () => {
                     <EventItem
                       key={event.id || `event-${eventIndex}`}
                       event={event}
+                      currentDate={currentDate}
                     />
                   ))}
                 </div>
