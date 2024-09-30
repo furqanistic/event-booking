@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import {
   Calendar,
+  CalendarCog,
   Clock,
   Home,
   Megaphone,
@@ -8,7 +9,6 @@ import {
   ShoppingBag,
   SquareChartGantt,
 } from 'lucide-react'
-import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 const Sidebar = () => {
@@ -18,8 +18,9 @@ const Sidebar = () => {
     { icon: Megaphone, label: 'News', path: '/novedades' },
     { icon: Calendar, label: 'Events', path: '/nuevo-evento' },
     { icon: Clock, label: 'Appointments', path: '/appointment' },
-    { icon: SquareChartGantt, label: 'Manage', path: '/manage' },
     { icon: ShoppingBag, label: 'Merch', path: '/merch' },
+    { icon: SquareChartGantt, label: 'Manage', path: '/manage' },
+    { icon: CalendarCog, label: 'Events', path: '/event-dashboard' },
     { icon: Settings, label: 'Settings', path: '/mi-cuenta' },
   ]
 
