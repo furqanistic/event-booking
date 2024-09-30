@@ -9,7 +9,7 @@ import MaterialsSection from './MaterialsSection'
 import MerchandisingSection from './MerchandisingSection'
 
 const EventForm = () => {
-  const { updateDraftEvent } = useEventContext()
+  const { updateDraftEvent, refreshEvents } = useEventContext()
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     eventType: 'Congreso',
@@ -332,6 +332,7 @@ const EventForm = () => {
         materialId: material._id,
         name: material.name,
         quantity: material.quantity,
+        // We don't need to add date here as it will be handled in the backend
       })),
       trainer: formData.trainer,
       merchandising: formData.merchandising,
@@ -339,6 +340,7 @@ const EventForm = () => {
         merchandisingId: item._id,
         name: item.name,
         quantity: item.quantity,
+        // We don't need to add date here as it will be handled in the backend
       })),
       address: formData.address,
       reference: formData.reference,
@@ -347,9 +349,6 @@ const EventForm = () => {
       district: formData.district,
       destination: formData.destination,
     }
-
-    setIsLoading(true)
-    setFormError(null)
 
     try {
       await updateInventory()
@@ -364,6 +363,7 @@ const EventForm = () => {
       })
 
       resetForm()
+      refreshEvents()
     } catch (error) {
       console.error('Error creating event:', error.response || error)
       const errorMessage =

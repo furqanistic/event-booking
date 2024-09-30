@@ -35,7 +35,6 @@ const Calendar = () => {
   const [calendarDays, setCalendarDays] = useState([])
   const [selectedEvent, setSelectedEvent] = useState(null)
   const { draftEvent, checkMaterialAvailability } = useEventContext()
-
   const months = [
     'enero',
     'febrero',
@@ -56,10 +55,16 @@ const Calendar = () => {
     data: fetchedEventsData = [],
     isLoading,
     error,
-  } = useQuery('events', async () => {
-    const response = await axiosInstance.get('/events')
-    return response.data
-  })
+  } = useQuery(
+    'events',
+    async () => {
+      const response = await axiosInstance.get('/events')
+      return response.data
+    },
+    {
+      refetchInterval: 2000, // Refetch every 5 seconds
+    }
+  )
 
   const ColorLegend = () => (
     <div className='flex flex-wrap items-center justify-center gap-4 p-2 bg-gray-100 text-xs'>

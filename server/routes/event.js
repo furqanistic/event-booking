@@ -23,17 +23,18 @@ router.delete('/events/:id', deleteEvent)
 // Material routes
 router.post('/materials', MaterialController.create)
 router.get('/materials', MaterialController.getAll)
-router.patch('/materials/:id', MaterialController.updateQuantity)
+router.patch('/materials/:id', MaterialController.updateAvailability)
 router.post(
   '/materials/check-availability',
   MaterialController.checkAvailability
 )
 router.delete('/materials/:id', MaterialController.delete)
+router.get('/materials/:id', MaterialController.getSpecificMaterial)
 
 // Merchandising routes
 router.post('/merchandising', MerchandisingController.create)
 router.get('/merchandising', MerchandisingController.getAll)
-router.patch('/merchandising/:id', MerchandisingController.updateQuantity)
+router.patch('/merchandising/:id', MerchandisingController.updateAvailability)
 router.post(
   '/merchandising/check-availability',
   MerchandisingController.checkAvailability

@@ -1,7 +1,7 @@
 import Event from '../models/Event.js'
 import { Material, Merchandising } from '../models/InventoryItem.js'
 
-const reserveItems = async (items, model, date) => {
+const updateItemAvailability = async (items, model, startDate, endDate) => {
   for (let item of items) {
     const doc = await model.findById(item.materialId || item.merchandisingId)
     if (!doc) {
@@ -10,29 +10,28 @@ const reserveItems = async (items, model, date) => {
       )
     }
 
-    const availableQuantity =
-      doc.totalQuantity -
-      doc.reservations.reduce((sum, reservation) => {
-        return (
-          sum +
-          (reservation.date.getTime() === date.getTime()
-            ? reservation.quantity
-            : 0)
-        )
-      }, 0)
+    // Find all availability entries that fall within the event's date range
+    const relevantAvailability = doc.availability.filter(
+      (a) => a.date >= startDate && a.date <= endDate
+    )
 
-    if (availableQuantity < item.quantity) {
-      throw new Error(`Not enough quantity available for ${doc.name}`)
+    // Check if there's enough quantity available for all relevant dates
+    for (let avail of relevantAvailability) {
+      if (avail.quantity < item.quantity) {
+        throw new Error(
+          `Not enough quantity available for ${
+            doc.name
+          } on ${avail.date.toDateString()}`
+        )
+      }
+      avail.quantity -= item.quantity
     }
 
-    doc.reservations.push({
-      date: date,
-      quantity: item.quantity,
-    })
     await doc.save()
   }
 }
 
+// Backend: createEvent function (update)
 export const createEvent = async (req, res) => {
   try {
     const {
@@ -40,7 +39,6 @@ export const createEvent = async (req, res) => {
       start,
       end,
       materials,
-      trainer,
       merchandising,
       address,
       reference,
@@ -70,35 +68,37 @@ export const createEvent = async (req, res) => {
     }
 
     const startDate = new Date(start)
+    const endDate = new Date(end)
 
-    // Reserve materials if selected
-    if (
-      materials &&
-      Array.isArray(selectedMaterials) &&
-      selectedMaterials.length > 0
-    ) {
-      await reserveItems(selectedMaterials, Material, startDate)
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid date format for start or end date',
+      })
     }
 
-    // Reserve merchandising if selected
-    if (
-      merchandising &&
-      Array.isArray(selectedMerchandising) &&
-      selectedMerchandising.length > 0
-    ) {
-      await reserveItems(selectedMerchandising, Merchandising, startDate)
-    }
+    // Add date to selectedMaterials and selectedMerchandising
+    const processedSelectedMaterials = selectedMaterials.map((item) => ({
+      ...item,
+      date: startDate,
+    }))
+
+    const processedSelectedMerchandising = selectedMerchandising.map(
+      (item) => ({
+        ...item,
+        date: startDate,
+      })
+    )
 
     // Create and save the new event
     const newEvent = new Event({
       eventType,
       start: startDate,
-      end: new Date(end),
+      end: endDate,
       materials,
-      selectedMaterials,
-      trainer,
+      selectedMaterials: processedSelectedMaterials,
       merchandising,
-      selectedMerchandising,
+      selectedMerchandising: processedSelectedMerchandising,
       address,
       reference,
       department,
@@ -242,8 +242,8 @@ export const getTotalEvents = async (req, res) => {
 const createInventoryController = (Model) => ({
   create: async (req, res) => {
     try {
-      const { name, totalQuantity, imagePath } = req.body
-      const newItem = new Model({ name, totalQuantity, imagePath })
+      const { name, imagePath, availability } = req.body
+      const newItem = new Model({ name, imagePath, availability })
       await newItem.save()
       res.status(201).json({
         status: 'success',
@@ -272,10 +272,10 @@ const createInventoryController = (Model) => ({
     }
   },
 
-  updateQuantity: async (req, res) => {
+  updateAvailability: async (req, res) => {
     try {
       const { id } = req.params
-      const updateData = req.body
+      const { name, imagePath, availability } = req.body
 
       const item = await Model.findById(id)
       if (!item) {
@@ -286,26 +286,50 @@ const createInventoryController = (Model) => ({
       }
 
       // Update fields
-      if (updateData.name) item.name = updateData.name
-      if (updateData.imagePath) item.imagePath = updateData.imagePath
-      if (updateData.totalQuantity !== undefined)
-        item.totalQuantity = updateData.totalQuantity
+      if (name) item.name = name
+      if (imagePath) item.imagePath = imagePath
+      if (Array.isArray(availability)) {
+        // Clear existing availability data
+        item.availability = []
 
-      // Handle reservations
-      if (Array.isArray(updateData.reservations)) {
-        item.reservations = updateData.reservations.map((reservation) => ({
-          date: new Date(reservation.date),
-          quantity: reservation.quantity,
-        }))
+        // Process and add new availability data
+        availability.forEach((monthData) => {
+          if (
+            !monthData.year ||
+            !monthData.month ||
+            !Array.isArray(monthData.days)
+          ) {
+            throw new Error('Invalid availability data structure')
+          }
+
+          const existingMonthIndex = item.availability.findIndex(
+            (a) => a.year === monthData.year && a.month === monthData.month
+          )
+
+          if (existingMonthIndex !== -1) {
+            // Update existing month data
+            item.availability[existingMonthIndex] = monthData
+          } else {
+            // Add new month data
+            item.availability.push(monthData)
+          }
+        })
+
+        // Sort availability array by year and month
+        item.availability.sort((a, b) => {
+          if (a.year !== b.year) return a.year - b.year
+          return a.month - b.month
+        })
       }
 
-      await item.save()
+      const updatedItem = await item.save()
 
       res.status(200).json({
         status: 'success',
-        data: { item },
+        data: { item: updatedItem },
       })
     } catch (err) {
+      console.error('Error in updateAvailability:', err)
       res.status(400).json({
         status: 'error',
         message: err.message,
@@ -315,20 +339,17 @@ const createInventoryController = (Model) => ({
 
   checkAvailability: async (req, res) => {
     try {
-      const { items, startDate, endDate } = req.body
+      const { items, date } = req.body
 
-      console.log('Checking availability for:', { items, startDate, endDate })
-
-      if (!items || !Array.isArray(items) || !startDate || !endDate) {
+      if (!items || !Array.isArray(items) || !date) {
         return res
           .status(400)
           .json({ status: 'error', message: 'Invalid input' })
       }
 
-      const start = new Date(startDate)
-      const end = new Date(endDate)
+      const checkDate = new Date(date)
 
-      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      if (isNaN(checkDate.getTime())) {
         return res
           .status(400)
           .json({ status: 'error', message: 'Invalid date format' })
@@ -336,7 +357,7 @@ const createInventoryController = (Model) => ({
 
       const availabilityChecks = await Promise.all(
         items.map(async (item) => {
-          const material = await Material.findById(item._id)
+          const material = await Model.findById(item._id)
           if (!material) {
             return {
               id: item._id,
@@ -345,33 +366,43 @@ const createInventoryController = (Model) => ({
             }
           }
 
-          const reservedQuantity = material.reservations.reduce(
-            (total, reservation) => {
-              const reservationDate = new Date(reservation.date)
-              if (reservationDate >= start && reservationDate <= end) {
-                return total + reservation.quantity
-              }
-              return total
-            },
-            0
+          const monthData = material.availability.find(
+            (a) =>
+              a.year === checkDate.getFullYear() &&
+              a.month === checkDate.getMonth() + 1
           )
 
-          const availableQuantity = material.totalQuantity - reservedQuantity
+          if (!monthData) {
+            return {
+              id: item._id,
+              available: false,
+              message: 'No availability data for the specified month',
+            }
+          }
+
+          const dayData = monthData.days.find(
+            (d) => d.day === checkDate.getDate()
+          )
+
+          if (!dayData) {
+            return {
+              id: item._id,
+              available: false,
+              message: 'No availability data for the specified date',
+            }
+          }
 
           return {
             id: item._id,
-            available: availableQuantity >= item.quantity,
+            available: dayData.quantity >= item.quantity,
             requestedQuantity: item.quantity,
-            availableQuantity: availableQuantity,
+            availableQuantity: dayData.quantity,
           }
         })
       )
 
       const allAvailable = availabilityChecks.every((check) => check.available)
-      console.log('Final availability result:', {
-        allAvailable,
-        items: availabilityChecks,
-      })
+
       return res.status(200).json({
         status: 'success',
         available: allAvailable,
@@ -400,6 +431,31 @@ const createInventoryController = (Model) => ({
         data: { item: deletedItem },
       })
     } catch (err) {
+      res.status(400).json({
+        status: 'error',
+        message: err.message,
+      })
+    }
+  },
+  getSpecificMaterial: async (req, res) => {
+    try {
+      const { id } = req.params
+
+      const material = await Material.findById(id)
+
+      if (!material) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Material not found',
+        })
+      }
+
+      res.status(200).json({
+        status: 'success',
+        data: { material },
+      })
+    } catch (err) {
+      console.error('Error in getSpecificMaterial:', err)
       res.status(400).json({
         status: 'error',
         message: err.message,

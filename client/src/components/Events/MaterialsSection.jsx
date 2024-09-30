@@ -2,12 +2,13 @@ import {
   AlertCircleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  MinusIcon,
-  PlusIcon,
+  RefreshCwIcon,
   Trash2Icon,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useQuery } from 'react-query'
+import React, { useEffect, useState } from 'react'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
+import { useMutation, useQuery } from 'react-query'
 import { axiosInstance } from '../../config'
 
 const Loader = () => (
@@ -39,7 +40,8 @@ const MaterialsSection = ({ formData, setFormData }) => {
   const [materialsTab, setMaterialsTab] = useState('find')
   const [currentPage, setCurrentPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
-  const [limitMessages, setLimitMessages] = useState({})
+  const [selectedDate, setSelectedDate] = useState(null)
+  const [availabilityChecked, setAvailabilityChecked] = useState(false)
   const itemsPerPage = 5
 
   const {
@@ -51,9 +53,58 @@ const MaterialsSection = ({ formData, setFormData }) => {
     return response.data.data.items
   })
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm])
+  console.log(materialsData)
+
+  const checkAvailabilityMutation = useMutation(
+    async (data) => {
+      const response = await axiosInstance.post(
+        '/materials/check-availability',
+        data
+      )
+      return response.data
+    },
+    {
+      onSuccess: (data) => {
+        setFormData((prevState) => ({
+          ...prevState,
+          selectedMaterials: prevState.selectedMaterials.map((item) => {
+            const availabilityCheck = data.items.find(
+              (check) => check.id === item._id
+            )
+            return {
+              ...item,
+              availableQuantity: availabilityCheck
+                ? availabilityCheck.availableQuantity
+                : 0,
+              quantity: Math.min(
+                item.quantity,
+                availabilityCheck ? availabilityCheck.availableQuantity : 0
+              ),
+            }
+          }),
+        }))
+        setAvailabilityChecked(true)
+      },
+    }
+  )
+
+  const handleDateChange = (date) => {
+    setSelectedDate(date)
+    setAvailabilityChecked(false)
+  }
+
+  const handleUpdateAvailability = (e) => {
+    e.preventDefault()
+    if (formData.selectedMaterials.length > 0 && selectedDate) {
+      checkAvailabilityMutation.mutate({
+        items: formData.selectedMaterials.map((item) => ({
+          _id: item._id,
+          quantity: item.quantity,
+        })),
+        date: selectedDate.toISOString(),
+      })
+    }
+  }
 
   const handleItemToggle = (itemId) => {
     setFormData((prevState) => {
@@ -62,18 +113,22 @@ const MaterialsSection = ({ formData, setFormData }) => {
         (i) => i._id === itemId
       )
         ? prevState.selectedMaterials.filter((i) => i._id !== itemId)
-        : [...prevState.selectedMaterials, { ...item, quantity: 1 }]
+        : [
+            ...prevState.selectedMaterials,
+            { ...item, quantity: 1, availableQuantity: 0 },
+          ]
       return { ...prevState, selectedMaterials: updatedItems }
     })
   }
 
-  const handleQuantityChange = (itemId, change) => {
+  const handleQuantityChange = (e, itemId, change) => {
+    e.preventDefault() // Prevent form submission
     setFormData((prevState) => {
       const updatedItems = prevState.selectedMaterials.map((item) => {
         if (item._id === itemId) {
           const newQuantity = Math.max(
             1,
-            Math.min(item.quantity + change, item.totalQuantity)
+            Math.min(item.quantity + change, item.availableQuantity)
           )
           return { ...item, quantity: newQuantity }
         }
@@ -83,25 +138,14 @@ const MaterialsSection = ({ formData, setFormData }) => {
     })
   }
 
-  const handleQuantityLimitExceeded = (itemId) => {
-    const item = formData.selectedMaterials.find((i) => i._id === itemId)
-    setLimitMessages((prev) => ({
-      ...prev,
-      [itemId]: `Max ${item.totalQuantity} available`,
-    }))
-    setTimeout(() => {
-      setLimitMessages((prev) => ({ ...prev, [itemId]: null }))
-    }, 3000)
-  }
-
-  const handleRemoveItem = (itemId) => {
+  const handleRemoveItem = (e, itemId) => {
+    e.preventDefault() // Prevent form submission
     setFormData((prevState) => ({
       ...prevState,
       selectedMaterials: prevState.selectedMaterials.filter(
         (item) => item._id !== itemId
       ),
     }))
-    setLimitMessages((prev) => ({ ...prev, [itemId]: null }))
   }
 
   const filteredItems = materialsData
@@ -140,9 +184,6 @@ const MaterialsSection = ({ formData, setFormData }) => {
               />
               <div>
                 <p className='font-medium'>{item.name}</p>
-                <p className='text-sm text-gray-500'>
-                  {item.totalQuantity} available(s)
-                </p>
               </div>
             </div>
             <button
@@ -230,68 +271,105 @@ const MaterialsSection = ({ formData, setFormData }) => {
         <div className='bg-white rounded-md shadow-sm'>
           <h4 className='font-medium p-4 border-b'>Selected Materials</h4>
           {formData.selectedMaterials.length > 0 ? (
-            <ul className='divide-y divide-gray-200'>
-              {formData.selectedMaterials.map((item) => (
-                <li key={item._id} className='p-4'>
-                  <div className='flex items-center justify-between mb-2'>
-                    <div className='flex items-center space-x-3'>
-                      <img
-                        src={item.imagePath}
-                        alt={item.name}
-                        className='w-12 h-12 object-cover rounded'
-                      />
-                      <div>
-                        <p className='font-medium'>{item.name}</p>
-                        <p className='text-sm text-gray-500'>
-                          Available: {item.totalQuantity}
-                        </p>
+            <div>
+              <div className='p-4 flex items-end space-x-4'>
+                <div className='flex-grow'>
+                  <label className='block text-sm font-medium text-gray-700 mb-1'>
+                    Select Date
+                  </label>
+                  <DatePicker
+                    selected={selectedDate}
+                    onChange={handleDateChange}
+                    className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
+                    placeholderText='Choose a date'
+                  />
+                </div>
+                <button
+                  onClick={handleUpdateAvailability}
+                  className='px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-300 flex items-center'
+                  disabled={
+                    checkAvailabilityMutation.isLoading || !selectedDate
+                  }
+                >
+                  {checkAvailabilityMutation.isLoading ? (
+                    <Loader />
+                  ) : (
+                    <>
+                      <RefreshCwIcon size={16} className='mr-2' />
+                      Check Availability
+                    </>
+                  )}
+                </button>
+              </div>
+              <ul className='divide-y divide-gray-200'>
+                {formData.selectedMaterials.map((item) => (
+                  <li key={item._id} className='p-4'>
+                    <div className='flex items-center justify-between mb-2'>
+                      <div className='flex items-center space-x-3'>
+                        <img
+                          src={item.imagePath}
+                          alt={item.name}
+                          className='w-12 h-12 object-cover rounded'
+                        />
+                        <div>
+                          <p className='font-medium'>{item.name}</p>
+                          {selectedDate ? (
+                            availabilityChecked ? (
+                              <p className='text-sm text-gray-500'>
+                                Available on {selectedDate.toDateString()}:{' '}
+                                {item.availableQuantity} items
+                              </p>
+                            ) : (
+                              <p className='text-sm text-amber-500'>
+                                Click "Check Availability" to see available
+                                quantity
+                              </p>
+                            )
+                          ) : (
+                            <p className='text-sm text-amber-500'>
+                              Please select a date first
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className='flex items-center space-x-2'>
+                        <button
+                          onClick={(e) => handleQuantityChange(e, item._id, -1)}
+                          className='w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full'
+                          disabled={item.quantity === 1 || !availabilityChecked}
+                        >
+                          -
+                        </button>
+                        <span className='w-8 text-center'>{item.quantity}</span>
+                        <button
+                          onClick={(e) => handleQuantityChange(e, item._id, 1)}
+                          className='w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full'
+                          disabled={
+                            item.quantity >= item.availableQuantity ||
+                            !availabilityChecked
+                          }
+                        >
+                          +
+                        </button>
+                        <button
+                          onClick={(e) => handleRemoveItem(e, item._id)}
+                          className='w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-100 rounded-full'
+                        >
+                          <Trash2Icon size={16} />
+                        </button>
                       </div>
                     </div>
-                    <div className='flex items-center space-x-2'>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault()
-                          handleQuantityChange(item._id, -1)
-                        }}
-                        className='w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full'
-                        disabled={item.quantity === 1}
-                      >
-                        <MinusIcon size={16} />
-                      </button>
-                      <span className='w-8 text-center'>{item.quantity}</span>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault()
-                          if (item.quantity < item.totalQuantity) {
-                            handleQuantityChange(item._id, 1)
-                          } else {
-                            handleQuantityLimitExceeded(item._id)
-                          }
-                        }}
-                        className='w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full'
-                      >
-                        <PlusIcon size={16} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault()
-                          handleRemoveItem(item._id)
-                        }}
-                        className='w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-100 rounded-full'
-                      >
-                        <Trash2Icon size={16} />
-                      </button>
-                    </div>
-                  </div>
-                  {limitMessages[item._id] && (
-                    <div className='flex items-center text-amber-600 text-sm mt-1'>
-                      <AlertCircleIcon size={16} className='mr-1' />
-                      {limitMessages[item._id]}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
+                    {availabilityChecked &&
+                      item.quantity > item.availableQuantity && (
+                        <div className='flex items-center text-amber-600 text-sm mt-1'>
+                          <AlertCircleIcon size={16} className='mr-1' />
+                          Requested quantity exceeds availability for this date.
+                        </div>
+                      )}
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : (
             <p className='text-gray-500 italic p-4'>No items selected.</p>
           )}

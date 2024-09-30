@@ -22,7 +22,8 @@ const EventSchema = new mongoose.Schema(
     selectedMaterials: [
       {
         materialId: {
-          type: String,
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Material',
           required: true,
         },
         name: {
@@ -33,12 +34,12 @@ const EventSchema = new mongoose.Schema(
           type: Number,
           required: true,
         },
+        date: {
+          type: Date,
+          required: true,
+        },
       },
     ],
-    trainer: {
-      type: Boolean,
-      default: false,
-    },
     merchandising: {
       type: Boolean,
       default: false,
@@ -46,7 +47,8 @@ const EventSchema = new mongoose.Schema(
     selectedMerchandising: [
       {
         merchandisingId: {
-          type: String,
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Merchandising',
           required: true,
         },
         name: {
@@ -55,6 +57,10 @@ const EventSchema = new mongoose.Schema(
         },
         quantity: {
           type: Number,
+          required: true,
+        },
+        date: {
+          type: Date,
           required: true,
         },
       },
