@@ -1,6 +1,6 @@
 import axios from 'axios'
 
 export const axiosInstance = axios.create({
-  baseURL: import.meta.env.REACT_APP_API_URL,
+  baseURL: 'http://147.79.82.94/api/',
   withCredentials: true, // If you're using cookies for authentication
 })
