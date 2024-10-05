@@ -1,9 +1,8 @@
 import { CalendarIcon, PencilIcon, PlusIcon, TrashIcon } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Toaster, toast } from 'react-hot-toast'
 import { useQuery, useQueryClient } from 'react-query'
 import { axiosInstance } from '../../config'
-import EventsManagementPage from '../../pages/EventsManagementPage'
 import Layout from '../../pages/Layout'
 import BulkUpdateInventory from './BulkUpdateInventory'
 
@@ -24,13 +23,13 @@ const InventorySection = () => {
     () => axiosInstance.get('merchandising').then((res) => res.data.data.items)
   )
 
-  const showNotification = (message, type = 'success') => {
+  const showNotification = useCallback((message, type = 'success') => {
     toast.dismiss()
     toast[type](message, {
       duration: 3000,
       position: 'top-center',
     })
-  }
+  }, [])
 
   const handleCreate = async (newItem) => {
     try {
@@ -105,10 +104,10 @@ const InventorySection = () => {
     setIsBulkUpdateOpen(true)
   }
 
-  const closeBulkUpdate = () => {
+  const closeBulkUpdate = useCallback(() => {
     setIsBulkUpdateOpen(false)
     setCurrentItem(null)
-  }
+  }, [])
 
   const renderTable = (items) => (
     <div className='overflow-x-auto'>
@@ -299,6 +298,7 @@ const InventorySection = () => {
             itemId={currentItem._id}
             itemName={currentItem.name}
             onClose={closeBulkUpdate}
+            showNotification={showNotification}
           />
         )}
       </div>

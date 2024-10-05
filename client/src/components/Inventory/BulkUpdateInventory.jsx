@@ -3,7 +3,12 @@ import { toast } from 'react-hot-toast'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { axiosInstance } from '../../config'
 
-const BulkUpdateInventory = ({ itemId, itemName, onClose }) => {
+const BulkUpdateInventory = ({
+  itemId,
+  itemName,
+  onClose,
+  showNotification,
+}) => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [quantities, setQuantities] = useState({})
@@ -26,7 +31,7 @@ const BulkUpdateInventory = ({ itemId, itemName, onClose }) => {
   ]
 
   const { data, isLoading, error } = useQuery(
-    ['material', itemId],
+    ['material', itemId, selectedYear, selectedMonth],
     async () => {
       const response = await axiosInstance.get(`/materials/${itemId}`)
       return response.data.data.material
@@ -48,23 +53,6 @@ const BulkUpdateInventory = ({ itemId, itemName, onClose }) => {
       },
     }
   )
-
-  useEffect(() => {
-    if (data) {
-      const monthData = data.availability.find(
-        (item) => item.year === selectedYear && item.month === selectedMonth
-      )
-      if (monthData) {
-        const newQuantities = {}
-        monthData.days.forEach(({ day, quantity }) => {
-          newQuantities[day] = quantity
-        })
-        setQuantities(newQuantities)
-      } else {
-        setQuantities({})
-      }
-    }
-  }, [data, selectedYear, selectedMonth])
 
   const handleMonthChange = (e) => {
     setSelectedMonth(parseInt(e.target.value))
@@ -88,16 +76,17 @@ const BulkUpdateInventory = ({ itemId, itemName, onClose }) => {
   }
 
   const updateMutation = useMutation(
-    (updatedData) => axiosInstance.patch(`/materials/${itemId}`, updatedData),
+    (updatedData) =>
+      axiosInstance.patch(`/materials/${itemId}/bulk-update`, updatedData),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['material', itemId])
-        toast.success('Inventory updated successfully')
+        showNotification('Inventory updated successfully')
         onClose()
       },
       onError: (error) => {
         console.error('Update error:', error)
-        toast.error('Failed to update inventory')
+        showNotification('Failed to update inventory', 'error')
       },
     }
   )
@@ -114,28 +103,7 @@ const BulkUpdateInventory = ({ itemId, itemName, onClose }) => {
       days,
     }
 
-    // Find the index of the existing month/year combination, if it exists
-    const existingIndex = data.availability.findIndex(
-      (item) => item.year === selectedYear && item.month === selectedMonth
-    )
-
-    let newAvailability
-    if (existingIndex !== -1) {
-      // Update existing month data
-      newAvailability = [...data.availability]
-      newAvailability[existingIndex] = updatedAvailability
-    } else {
-      // Add new month data
-      newAvailability = [...data.availability, updatedAvailability]
-    }
-
-    // Sort the availability array by year and month
-    newAvailability.sort((a, b) => {
-      if (a.year !== b.year) return a.year - b.year
-      return a.month - b.month
-    })
-
-    updateMutation.mutate({ availability: newAvailability })
+    updateMutation.mutate(updatedAvailability)
   }
 
   const renderCalendar = () => {

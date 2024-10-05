@@ -23,7 +23,14 @@ router.delete('/events/:id', deleteEvent)
 // Material routes
 router.post('/materials', MaterialController.create)
 router.get('/materials', MaterialController.getAll)
-router.patch('/materials/:id', MaterialController.updateAvailability)
+router.patch(
+  '/materials/:id/update-availability',
+  MaterialController.updateAvailability
+)
+router.patch(
+  '/materials/:id/bulk-update',
+  MaterialController.bulkUpdateAvailability
+) // New route
 router.post(
   '/materials/check-availability',
   MaterialController.checkAvailability

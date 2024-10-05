@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import toast from 'react-hot-toast'
+import { useMutation, useQueryClient } from 'react-query'
 import { axiosInstance } from '../../config'
 import { useEventContext } from './EventProvider'
 import MaterialsSection from './MaterialsSection'
@@ -70,6 +71,38 @@ const EventForm = () => {
     { value: 'TARAPOTO', label: 'TARAPOTO' },
     { value: 'SAN MARTIN', label: 'SAN MARTIN' },
   ]
+
+  const queryClient = useQueryClient()
+
+  const updateInventoryMutation = useMutation(
+    (item) =>
+      axiosInstance.patch(`/materials/${item._id}/update-availability`, {
+        quantity: item.quantity,
+        startDate: formData.start,
+        endDate: formData.end,
+      }),
+    {
+      onError: (error) => {
+        console.error('Error updating inventory:', error)
+        toast.error('Failed to update inventory')
+      },
+    }
+  )
+
+  const createEventMutation = useMutation(
+    (newEvent) => axiosInstance.post('/events/', newEvent),
+    {
+      onSuccess: () => {
+        toast.success('Event successfully registered!')
+        resetForm()
+        refreshEvents()
+      },
+      onError: (error) => {
+        console.error('Error creating event:', error)
+        toast.error('Failed to create event')
+      },
+    }
+  )
 
   useEffect(() => {
     if (formData.start && formData.end) {
@@ -227,92 +260,6 @@ const EventForm = () => {
     { value: '21', label: 'Sonche' },
   ]
 
-  const checkInventoryAvailability = async () => {
-    try {
-      const materialPromise = axiosInstance.post(
-        '/materials/check-availability',
-        {
-          items: formData.selectedMaterials,
-          startDate: formData.start,
-          endDate: formData.end,
-        }
-      )
-
-      const merchandisingPromise = axiosInstance.post(
-        '/merchandising/check-availability',
-        {
-          items: formData.selectedMerchandising,
-          startDate: formData.start,
-          endDate: formData.end,
-        }
-      )
-
-      const [materialResponse, merchandisingResponse] = await Promise.all([
-        materialPromise,
-        merchandisingPromise,
-      ])
-
-      console.log('Material availability response:', materialResponse.data)
-      console.log(
-        'Merchandising availability response:',
-        merchandisingResponse.data
-      )
-
-      if (
-        !materialResponse.data.available ||
-        !merchandisingResponse.data.available
-      ) {
-        const unavailableItems = [
-          ...materialResponse.data.items.filter((item) => !item.available),
-          ...merchandisingResponse.data.items.filter((item) => !item.available),
-        ]
-
-        const errorMessages = unavailableItems.map(
-          (item) =>
-            `${item.name}: Requested ${item.requestedQuantity}, Available ${item.availableQuantity}`
-        )
-
-        setFormError(
-          `Some items are not available: ${errorMessages.join('; ')}`
-        )
-        return false
-      }
-
-      return true
-    } catch (error) {
-      console.error('Error checking inventory availability:', error)
-      setFormError('Error checking inventory availability. Please try again.')
-      return false
-    }
-  }
-
-  const updateInventory = async () => {
-    try {
-      const updatePromises = [
-        ...formData.selectedMaterials.map((item) =>
-          axiosInstance.patch(`/materials/${item._id}`, {
-            quantity: item.quantity,
-            startDate: formData.start,
-            endDate: formData.end,
-          })
-        ),
-        ...formData.selectedMerchandising.map((item) =>
-          axiosInstance.patch(`/merchandising/${item._id}`, {
-            quantity: item.quantity,
-            startDate: formData.start,
-            endDate: formData.end,
-          })
-        ),
-      ]
-      await Promise.all(updatePromises)
-      console.log(updatePromises)
-      console.log('run 2')
-    } catch (error) {
-      console.error('Error updating inventory:', error)
-      throw error
-    }
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!formData.start || !formData.end) {
@@ -332,7 +279,6 @@ const EventForm = () => {
         materialId: material._id,
         name: material.name,
         quantity: material.quantity,
-        // We don't need to add date here as it will be handled in the backend
       })),
       trainer: formData.trainer,
       merchandising: formData.merchandising,
@@ -351,16 +297,19 @@ const EventForm = () => {
     }
 
     try {
-      await updateInventory()
-      const response = await axiosInstance.post('/events/', newEvent)
+      // First, update the inventory for each selected material
+      await Promise.all(
+        formData.selectedMaterials.map((item) =>
+          updateInventoryMutation.mutateAsync(item)
+        )
+      )
 
-      toast.success('Event successfully registered!', {
-        duration: 5000,
-        style: {
-          background: 'rgb(29, 232, 29)',
-          color: '#fff',
-        },
-      })
+      // Create the event
+      await createEventMutation.mutateAsync(newEvent)
+
+      // Invalidate and refetch relevant queries
+      queryClient.invalidateQueries('materials')
+      queryClient.invalidateQueries('events')
 
       resetForm()
       refreshEvents()
@@ -525,7 +474,6 @@ const EventForm = () => {
               <DatePicker
                 selected={formData.start}
                 onChange={(date) => handleDateChange(date, 'start')}
-                showTimeSelect
                 dateFormat='MMMM d, yyyy h:mm aa'
                 className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
               />
@@ -538,7 +486,7 @@ const EventForm = () => {
                 selected={formData.end}
                 onChange={(date) => handleDateChange(date, 'end')}
                 showTimeSelect
-                dateFormat='MMMM d, yyyy h:mm aa'
+                dateFormat='MMMM d, yyyy'
                 className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
               />
             </div>

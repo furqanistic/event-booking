@@ -275,58 +275,61 @@ const createInventoryController = (Model) => ({
   updateAvailability: async (req, res) => {
     try {
       const { id } = req.params
-      const { name, imagePath, availability } = req.body
+      const { quantity, startDate, endDate } = req.body
 
-      const item = await Model.findById(id)
-      if (!item) {
+      const material = await Material.findById(id)
+      if (!material) {
         return res.status(404).json({
           status: 'error',
-          message: 'Item not found',
+          message: 'Material not found',
         })
       }
 
-      // Update fields
-      if (name) item.name = name
-      if (imagePath) item.imagePath = imagePath
-      if (Array.isArray(availability)) {
-        // Clear existing availability data
-        item.availability = []
+      const start = new Date(startDate)
+      const end = new Date(endDate)
 
-        // Process and add new availability data
-        availability.forEach((monthData) => {
-          if (
-            !monthData.year ||
-            !monthData.month ||
-            !Array.isArray(monthData.days)
-          ) {
-            throw new Error('Invalid availability data structure')
-          }
+      for (
+        let date = new Date(start);
+        date <= end;
+        date.setDate(date.getDate() + 1)
+      ) {
+        const year = date.getFullYear()
+        const month = date.getMonth() + 1
+        const day = date.getDate()
 
-          const existingMonthIndex = item.availability.findIndex(
-            (a) => a.year === monthData.year && a.month === monthData.month
-          )
+        let monthEntry = material.availability.find(
+          (entry) => entry.year === year && entry.month === month
+        )
+        if (!monthEntry) {
+          monthEntry = { year, month, days: [] }
+          material.availability.push(monthEntry)
+        }
 
-          if (existingMonthIndex !== -1) {
-            // Update existing month data
-            item.availability[existingMonthIndex] = monthData
-          } else {
-            // Add new month data
-            item.availability.push(monthData)
-          }
-        })
+        let dayEntry = monthEntry.days.find((d) => d.day === day)
+        if (!dayEntry) {
+          dayEntry = { day, quantity: 0 }
+          monthEntry.days.push(dayEntry)
+        }
 
-        // Sort availability array by year and month
-        item.availability.sort((a, b) => {
-          if (a.year !== b.year) return a.year - b.year
-          return a.month - b.month
-        })
+        dayEntry.quantity = Math.max(0, dayEntry.quantity - quantity)
       }
 
-      const updatedItem = await item.save()
+      // Sort availability array
+      material.availability.sort((a, b) => {
+        if (a.year !== b.year) return a.year - b.year
+        return a.month - b.month
+      })
+
+      // Sort days array within each month
+      material.availability.forEach((month) => {
+        month.days.sort((a, b) => a.day - b.day)
+      })
+
+      await material.save()
 
       res.status(200).json({
         status: 'success',
-        data: { item: updatedItem },
+        data: { material },
       })
     } catch (err) {
       console.error('Error in updateAvailability:', err)
@@ -337,19 +340,72 @@ const createInventoryController = (Model) => ({
     }
   },
 
+  bulkUpdateAvailability: async (req, res) => {
+    try {
+      const { id } = req.params
+      const { year, month, days } = req.body
+
+      const material = await Material.findById(id)
+      if (!material) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Material not found',
+        })
+      }
+
+      // Find the index of the existing month/year combination, if it exists
+      const existingIndex = material.availability.findIndex(
+        (item) => item.year === year && item.month === month
+      )
+
+      if (existingIndex !== -1) {
+        // Update existing month data
+        material.availability[existingIndex] = { year, month, days }
+      } else {
+        // Add new month data
+        material.availability.push({ year, month, days })
+      }
+
+      // Sort the availability array by year and month
+      material.availability.sort((a, b) => {
+        if (a.year !== b.year) return a.year - b.year
+        return a.month - b.month
+      })
+
+      // Sort the days array within each month
+      material.availability.forEach((month) => {
+        month.days.sort((a, b) => a.day - b.day)
+      })
+
+      await material.save()
+
+      res.status(200).json({
+        status: 'success',
+        data: { material },
+      })
+    } catch (err) {
+      console.error('Error in bulkUpdateAvailability:', err)
+      res.status(400).json({
+        status: 'error',
+        message: err.message,
+      })
+    }
+  },
+
   checkAvailability: async (req, res) => {
     try {
-      const { items, date } = req.body
+      const { items, startDate, endDate } = req.body
 
-      if (!items || !Array.isArray(items) || !date) {
+      if (!items || !Array.isArray(items) || !startDate || !endDate) {
         return res
           .status(400)
           .json({ status: 'error', message: 'Invalid input' })
       }
 
-      const checkDate = new Date(date)
+      const checkStartDate = new Date(startDate)
+      const checkEndDate = new Date(endDate)
 
-      if (isNaN(checkDate.getTime())) {
+      if (isNaN(checkStartDate.getTime()) || isNaN(checkEndDate.getTime())) {
         return res
           .status(400)
           .json({ status: 'error', message: 'Invalid date format' })
@@ -357,7 +413,7 @@ const createInventoryController = (Model) => ({
 
       const availabilityChecks = await Promise.all(
         items.map(async (item) => {
-          const material = await Model.findById(item._id)
+          const material = await Material.findById(item._id)
           if (!material) {
             return {
               id: item._id,
@@ -366,37 +422,45 @@ const createInventoryController = (Model) => ({
             }
           }
 
-          const monthData = material.availability.find(
-            (a) =>
-              a.year === checkDate.getFullYear() &&
-              a.month === checkDate.getMonth() + 1
-          )
+          let minAvailableQuantity = Infinity
 
-          if (!monthData) {
-            return {
-              id: item._id,
-              available: false,
-              message: 'No availability data for the specified month',
+          // Check availability for each day in the range
+          for (
+            let d = new Date(checkStartDate);
+            d <= checkEndDate;
+            d.setDate(d.getDate() + 1)
+          ) {
+            const year = d.getFullYear()
+            const month = d.getMonth() + 1
+            const day = d.getDate()
+
+            const monthData = material.availability.find(
+              (a) => a.year === year && a.month === month
+            )
+
+            if (!monthData) {
+              minAvailableQuantity = 0
+              break
             }
-          }
 
-          const dayData = monthData.days.find(
-            (d) => d.day === checkDate.getDate()
-          )
+            const dayData = monthData.days.find((d) => d.day === day)
 
-          if (!dayData) {
-            return {
-              id: item._id,
-              available: false,
-              message: 'No availability data for the specified date',
+            if (!dayData) {
+              minAvailableQuantity = 0
+              break
             }
+
+            minAvailableQuantity = Math.min(
+              minAvailableQuantity,
+              dayData.quantity
+            )
           }
 
           return {
             id: item._id,
-            available: dayData.quantity >= item.quantity,
+            available: minAvailableQuantity >= item.quantity,
             requestedQuantity: item.quantity,
-            availableQuantity: dayData.quantity,
+            availableQuantity: minAvailableQuantity,
           }
         })
       )
@@ -415,6 +479,7 @@ const createInventoryController = (Model) => ({
         .json({ status: 'error', message: 'Internal server error' })
     }
   },
+
   delete: async (req, res) => {
     try {
       const { id } = req.params

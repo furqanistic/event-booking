@@ -5,7 +5,7 @@ import {
   RefreshCwIcon,
   Trash2Icon,
 } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
+import { useState } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import { useMutation, useQuery } from 'react-query'
@@ -40,7 +40,8 @@ const MaterialsSection = ({ formData, setFormData }) => {
   const [materialsTab, setMaterialsTab] = useState('find')
   const [currentPage, setCurrentPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedDate, setSelectedDate] = useState(null)
+  const [startDate, setStartDate] = useState(null)
+  const [endDate, setEndDate] = useState(null)
   const [availabilityChecked, setAvailabilityChecked] = useState(false)
   const itemsPerPage = 5
 
@@ -52,8 +53,6 @@ const MaterialsSection = ({ formData, setFormData }) => {
     const response = await axiosInstance.get('/materials')
     return response.data.data.items
   })
-
-  console.log(materialsData)
 
   const checkAvailabilityMutation = useMutation(
     async (data) => {
@@ -88,20 +87,26 @@ const MaterialsSection = ({ formData, setFormData }) => {
     }
   )
 
-  const handleDateChange = (date) => {
-    setSelectedDate(date)
+  const handleStartDateChange = (date) => {
+    setStartDate(date)
+    setAvailabilityChecked(false)
+  }
+
+  const handleEndDateChange = (date) => {
+    setEndDate(date)
     setAvailabilityChecked(false)
   }
 
   const handleUpdateAvailability = (e) => {
     e.preventDefault()
-    if (formData.selectedMaterials.length > 0 && selectedDate) {
+    if (formData.selectedMaterials.length > 0 && startDate && endDate) {
       checkAvailabilityMutation.mutate({
         items: formData.selectedMaterials.map((item) => ({
           _id: item._id,
           quantity: item.quantity,
         })),
-        date: selectedDate.toISOString(),
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
       })
     }
   }
@@ -272,27 +277,49 @@ const MaterialsSection = ({ formData, setFormData }) => {
           <h4 className='font-medium p-4 border-b'>Selected Materials</h4>
           {formData.selectedMaterials.length > 0 ? (
             <div>
-              <div className='p-4 flex items-end space-x-4'>
-                <div className='flex-grow'>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>
-                    Select Date
-                  </label>
-                  <DatePicker
-                    selected={selectedDate}
-                    onChange={handleDateChange}
-                    className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
-                    placeholderText='Choose a date'
-                  />
+              <div className='p-4 space-y-4'>
+                <div className='flex space-x-4'>
+                  <div className='flex-grow'>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>
+                      Start Date
+                    </label>
+                    <DatePicker
+                      selected={startDate}
+                      onChange={handleStartDateChange}
+                      selectsStart
+                      startDate={startDate}
+                      endDate={endDate}
+                      className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
+                      placeholderText='Choose start date'
+                    />
+                  </div>
+                  <div className='flex-grow'>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>
+                      End Date
+                    </label>
+                    <DatePicker
+                      selected={endDate}
+                      onChange={handleEndDateChange}
+                      selectsEnd
+                      startDate={startDate}
+                      endDate={endDate}
+                      minDate={startDate}
+                      className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
+                      placeholderText='Choose end date'
+                    />
+                  </div>
                 </div>
                 <button
                   onClick={handleUpdateAvailability}
-                  className='px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-300 flex items-center'
+                  className='w-full px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-300 flex items-center justify-center'
                   disabled={
-                    checkAvailabilityMutation.isLoading || !selectedDate
+                    checkAvailabilityMutation.isLoading ||
+                    !startDate ||
+                    !endDate
                   }
                 >
                   {checkAvailabilityMutation.isLoading ? (
-                    <Loader />
+                    <div className='animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white'></div>
                   ) : (
                     <>
                       <RefreshCwIcon size={16} className='mr-2' />
@@ -313,10 +340,11 @@ const MaterialsSection = ({ formData, setFormData }) => {
                         />
                         <div>
                           <p className='font-medium'>{item.name}</p>
-                          {selectedDate ? (
+                          {startDate && endDate ? (
                             availabilityChecked ? (
                               <p className='text-sm text-gray-500'>
-                                Available on {selectedDate.toDateString()}:{' '}
+                                Available between {startDate.toDateString()} and{' '}
+                                {endDate.toDateString()}:{' '}
                                 {item.availableQuantity} items
                               </p>
                             ) : (
@@ -327,7 +355,7 @@ const MaterialsSection = ({ formData, setFormData }) => {
                             )
                           ) : (
                             <p className='text-sm text-amber-500'>
-                              Please select a date first
+                              Please select start and end dates first
                             </p>
                           )}
                         </div>
@@ -363,7 +391,8 @@ const MaterialsSection = ({ formData, setFormData }) => {
                       item.quantity > item.availableQuantity && (
                         <div className='flex items-center text-amber-600 text-sm mt-1'>
                           <AlertCircleIcon size={16} className='mr-1' />
-                          Requested quantity exceeds availability for this date.
+                          Requested quantity exceeds availability for this date
+                          range.
                         </div>
                       )}
                   </li>

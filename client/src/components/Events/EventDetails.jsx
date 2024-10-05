@@ -4,7 +4,6 @@ import { materials, merchandisingItems } from '../../dataFile'
 const EventDetails = ({ event, onClose }) => {
   if (!event) return null
   const details = event || {}
-
   // Helper function to get merchandising item by id
   const getMerchandisingItem = (id) => {
     return merchandisingItems.find((item) => item.id === id)
@@ -41,7 +40,11 @@ const EventDetails = ({ event, onClose }) => {
             <ul className='list-disc pl-5 mt-1'>
               {details.selectedMaterials.map((item, index) => {
                 const material = getMaterialItem(item.id)
-                return <li key={index}>Quantity: {item.quantity}</li>
+                return (
+                  <li key={index}>
+                    {item.name} (Quantity: {item.quantity})
+                  </li>
+                )
               })}
             </ul>
           </div>
@@ -62,8 +65,7 @@ const EventDetails = ({ event, onClose }) => {
                 const merchandisingItem = getMerchandisingItem(item.id)
                 return (
                   <li key={index}>
-                    {merchandisingItem ? merchandisingItem.name : ''}
-                    Quantity: {item.quantity}
+                    {item.name} (Quantity: {item.quantity})
                   </li>
                 )
               })}
