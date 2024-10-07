@@ -21,6 +21,43 @@ const fetchEvents = async () => {
   return response.data.data.events
 }
 
+const deleteEventAndRestock = async (event) => {
+  // Delete the event
+  await axiosInstance.delete(`/events/${event._id}`)
+
+  // Restock materials
+  if (event.materials && event.selectedMaterials) {
+    for (const material of event.selectedMaterials) {
+      await axiosInstance.patch(
+        `/materials/${material.materialId}/update-availability`,
+        {
+          quantity: -material.quantity, // Negative quantity to increase availability
+          startDate: event.start,
+          endDate: event.end,
+          destination: event.destination,
+        }
+      )
+    }
+  }
+
+  // Restock merchandising
+  if (event.merchandising && event.selectedMerchandising) {
+    for (const item of event.selectedMerchandising) {
+      await axiosInstance.patch(
+        `/merchandising/${item.merchandisingId}/update-availability`,
+        {
+          quantity: -item.quantity, // Negative quantity to increase availability
+          startDate: event.start,
+          endDate: event.end,
+          destination: event.destination,
+        }
+      )
+    }
+  }
+
+  return event._id
+}
+
 // Delete event
 const deleteEvent = async (eventId) => {
   await axiosInstance.delete(`/events/${eventId}`)
@@ -48,27 +85,34 @@ const EventsManagementPage = () => {
   })
 
   // Mutation for deleting an event
-  const deleteMutation = useMutation(deleteEvent, {
+  const deleteMutation = useMutation(deleteEventAndRestock, {
     onSuccess: (deletedEventId) => {
       // Update the query cache to remove the deleted event
       queryClient.setQueryData('events', (oldData) =>
         oldData.filter((event) => event._id !== deletedEventId)
       )
-      setDeleteConfirmation({ show: false, eventId: null })
+      // Invalidate and refetch materials and merchandising queries
+      queryClient.invalidateQueries('materials')
+      queryClient.invalidateQueries('merchandising')
+      setDeleteConfirmation({ show: false, event: null })
+    },
+    onError: (error) => {
+      console.error('Error deleting event and restocking inventory:', error)
+      // Handle error (e.g., show error message to user)
     },
   })
 
-  const showDeleteConfirmation = (eventId) => {
-    setDeleteConfirmation({ show: true, eventId })
+  const showDeleteConfirmation = (event) => {
+    setDeleteConfirmation({ show: true, event })
   }
 
   const hideDeleteConfirmation = () => {
-    setDeleteConfirmation({ show: false, eventId: null })
+    setDeleteConfirmation({ show: false, event: null })
   }
 
   const handleDeleteEvent = () => {
-    if (deleteConfirmation.eventId) {
-      deleteMutation.mutate(deleteConfirmation.eventId)
+    if (deleteConfirmation.event) {
+      deleteMutation.mutate(deleteConfirmation.event)
     }
   }
 
@@ -288,7 +332,10 @@ const EventsManagementPage = () => {
         <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
           <div className='bg-white p-6 rounded-lg shadow-xl'>
             <h2 className='text-xl font-bold mb-4'>Confirm Deletion</h2>
-            <p className='mb-6'>Are you sure you want to delete this event?</p>
+            <p className='mb-6'>
+              Are you sure you want to delete this event? This action will also
+              restock the associated inventory items.
+            </p>
             <div className='flex justify-end'>
               <button
                 onClick={hideDeleteConfirmation}
@@ -300,7 +347,7 @@ const EventsManagementPage = () => {
                 onClick={handleDeleteEvent}
                 className='px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700'
               >
-                Delete
+                Delete and Restock
               </button>
             </div>
           </div>

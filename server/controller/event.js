@@ -1,3 +1,4 @@
+import { destinationData } from '../../client/src/dataFile.js'
 import Event from '../models/Event.js'
 import { Material, Merchandising } from '../models/InventoryItem.js'
 
@@ -275,7 +276,15 @@ const createInventoryController = (Model) => ({
   updateAvailability: async (req, res) => {
     try {
       const { id } = req.params
-      const { quantity, startDate, endDate } = req.body
+      const { quantity, startDate, endDate, destination } = req.body
+
+      if (!destination) {
+        return res.status(400).json({
+          status: 'error',
+          message:
+            'Destination is required for calculating transportation and cleaning days',
+        })
+      }
 
       const material = await Material.findById(id)
       if (!material) {
@@ -288,9 +297,19 @@ const createInventoryController = (Model) => ({
       const start = new Date(startDate)
       const end = new Date(endDate)
 
+      const { daysToReach, daysToReturn, cleaningDays } = destinationData[
+        destination
+      ] || { daysToReach: 0, daysToReturn: 0, cleaningDays: 0 }
+
+      // Calculate the full range of dates to update
+      const fullStartDate = new Date(start)
+      fullStartDate.setDate(fullStartDate.getDate() - daysToReach)
+      const fullEndDate = new Date(end)
+      fullEndDate.setDate(fullEndDate.getDate() + daysToReturn + cleaningDays)
+
       for (
-        let date = new Date(start);
-        date <= end;
+        let date = new Date(fullStartDate);
+        date <= fullEndDate;
         date.setDate(date.getDate() + 1)
       ) {
         const year = date.getFullYear()
@@ -307,7 +326,7 @@ const createInventoryController = (Model) => ({
 
         let dayEntry = monthEntry.days.find((d) => d.day === day)
         if (!dayEntry) {
-          dayEntry = { day, quantity: 0 }
+          dayEntry = { day, quantity: Number.MAX_SAFE_INTEGER } // Assume maximum availability if no entry exists
           monthEntry.days.push(dayEntry)
         }
 

@@ -25,7 +25,6 @@ const EventForm = () => {
     department: 'Amazonas',
     province: 'Chachapoyas',
     district: 'Chachapoyas',
-
     selectedMaterials: [],
     roomCapacity: '',
     selectedRoom: '',
@@ -80,6 +79,7 @@ const EventForm = () => {
         quantity: item.quantity,
         startDate: formData.start,
         endDate: formData.end,
+        destination: formData.destination,
       }),
     {
       onError: (error) => {
@@ -266,7 +266,7 @@ const EventForm = () => {
       setFormError('Please select start and end dates for the event.')
       return
     }
-
+    console.log(formData)
     setIsLoading(true)
     setFormError(null)
 
@@ -300,7 +300,10 @@ const EventForm = () => {
       // First, update the inventory for each selected material
       await Promise.all(
         formData.selectedMaterials.map((item) =>
-          updateInventoryMutation.mutateAsync(item)
+          updateInventoryMutation.mutateAsync({
+            ...item,
+            destination: formData.destination, // Include the destination
+          })
         )
       )
 
@@ -373,80 +376,6 @@ const EventForm = () => {
             <MaterialsSection formData={formData} setFormData={setFormData} />
           )}
 
-          {/* <Toggle
-            name='sala'
-            checked={formData.sala}
-            onChange={handleInputChange}
-            label='Sala'
-          />
-
-          {formData.sala && (
-            <div className='space-y-4 border border-gray-200 rounded-md p-4'>
-              <h3 className='font-medium text-gray-700'>Room</h3>
-              <div>
-                <label className='block text-sm text-gray-600 mb-1'>
-                  How many people do you want to book?
-                </label>
-                <select
-                  name='roomCapacity'
-                  value={formData.roomCapacity}
-                  onChange={handleInputChange}
-                  className='w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-                >
-                  <option value=''>Select</option>
-                  {[...Array(30)].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      {i + 1} {i + 1 === 1 ? 'person' : 'people'}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className='block text-sm text-gray-600 mb-1'>Sala</label>
-                <div className='flex space-x-2'>
-                  <button
-                    type='button'
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, selectedRoom: 'A' }))
-                    }
-                    className={`flex-1 p-2 border rounded-md ${
-                      formData.selectedRoom === 'A'
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-300'
-                    }`}
-                  >
-                    Room A
-                  </button>
-                  <button
-                    type='button'
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, selectedRoom: 'B' }))
-                    }
-                    className={`flex-1 p-2 border rounded-md ${
-                      formData.selectedRoom === 'B'
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-300'
-                    }`}
-                  >
-                    Room B
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className='block text-sm text-gray-600 mb-1'>
-                  Assistants
-                </label>
-                <textarea
-                  name='assistants'
-                  value={formData.assistants}
-                  onChange={handleInputChange}
-                  className='w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-                  rows='3'
-                ></textarea>
-              </div>
-            </div>
-          )} */}
-
           <Toggle
             name='trainer'
             checked={formData.trainer}
@@ -474,18 +403,17 @@ const EventForm = () => {
               <DatePicker
                 selected={formData.start}
                 onChange={(date) => handleDateChange(date, 'start')}
-                dateFormat='MMMM d, yyyy h:mm aa'
+                dateFormat='MMMM d, yyyy'
                 className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
               />
             </div>
             <div>
               <label className='block text-sm font-medium text-gray-700 mb-1'>
-                End Date & Time
+                End Date & Tipme
               </label>
               <DatePicker
                 selected={formData.end}
                 onChange={(date) => handleDateChange(date, 'end')}
-                showTimeSelect
                 dateFormat='MMMM d, yyyy'
                 className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
               />
