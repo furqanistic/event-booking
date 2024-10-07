@@ -9,19 +9,22 @@ import {
   ShoppingBag,
   Trash2,
 } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { axiosInstance } from '../config'
 import Layout from './Layout'
 
 // Fetch events
+
 const fetchEvents = async () => {
   const response = await axiosInstance.get('/events')
   return response.data.data.events
 }
 
-const deleteEventAndRestock = async (event) => {
-  // ... (rest of the function remains the same)
+// Delete event
+const deleteEvent = async (eventId) => {
+  await axiosInstance.delete(`/events/${eventId}`)
+  return eventId // Return the deleted event ID
 }
 
 const EventsManagementPage = () => {
@@ -39,41 +42,33 @@ const EventsManagementPage = () => {
     isError,
     error,
     isFetching,
-    refetch,
   } = useQuery('events', fetchEvents, {
     staleTime: 60000, // 1 minute
     refetchOnWindowFocus: false,
-    retry: 3, // Retry failed requests 3 times
-    retryDelay: 1000, // Wait 1 second between retries
   })
-
-  // Use effect to refetch data on mount
-  useEffect(() => {
-    refetch()
-  }, [refetch])
 
   // Mutation for deleting an event
-  const deleteMutation = useMutation(deleteEventAndRestock, {
+  const deleteMutation = useMutation(deleteEvent, {
     onSuccess: (deletedEventId) => {
-      // ... (rest of the onSuccess callback remains the same)
-    },
-    onError: (error) => {
-      console.error('Error deleting event and restocking inventory:', error)
-      // Handle error (e.g., show error message to user)
+      // Update the query cache to remove the deleted event
+      queryClient.setQueryData('events', (oldData) =>
+        oldData.filter((event) => event._id !== deletedEventId)
+      )
+      setDeleteConfirmation({ show: false, eventId: null })
     },
   })
 
-  const showDeleteConfirmation = (event) => {
-    setDeleteConfirmation({ show: true, event })
+  const showDeleteConfirmation = (eventId) => {
+    setDeleteConfirmation({ show: true, eventId })
   }
 
   const hideDeleteConfirmation = () => {
-    setDeleteConfirmation({ show: false, event: null })
+    setDeleteConfirmation({ show: false, eventId: null })
   }
 
   const handleDeleteEvent = () => {
-    if (deleteConfirmation.event) {
-      deleteMutation.mutate(deleteConfirmation.event)
+    if (deleteConfirmation.eventId) {
+      deleteMutation.mutate(deleteConfirmation.eventId)
     }
   }
 
@@ -293,10 +288,7 @@ const EventsManagementPage = () => {
         <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
           <div className='bg-white p-6 rounded-lg shadow-xl'>
             <h2 className='text-xl font-bold mb-4'>Confirm Deletion</h2>
-            <p className='mb-6'>
-              Are you sure you want to delete this event? This action will also
-              restock the associated inventory items.
-            </p>
+            <p className='mb-6'>Are you sure you want to delete this event?</p>
             <div className='flex justify-end'>
               <button
                 onClick={hideDeleteConfirmation}
@@ -308,7 +300,7 @@ const EventsManagementPage = () => {
                 onClick={handleDeleteEvent}
                 className='px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700'
               >
-                Delete and Restock
+                Delete
               </button>
             </div>
           </div>
