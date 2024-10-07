@@ -9,7 +9,7 @@ import {
   ShoppingBag,
   Trash2,
 } from 'lucide-react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { axiosInstance } from '../config'
 import Layout from './Layout'
@@ -42,10 +42,16 @@ const EventsManagementPage = () => {
     isError,
     error,
     isFetching,
+    refetch,
   } = useQuery('events', fetchEvents, {
     staleTime: 60000, // 1 minute
     refetchOnWindowFocus: false,
+    enabled: false, // Disable auto-fetching
   })
+
+  useEffect(() => {
+    refetch()
+  }, [refetch])
 
   // Mutation for deleting an event
   const deleteMutation = useMutation(deleteEvent, {
