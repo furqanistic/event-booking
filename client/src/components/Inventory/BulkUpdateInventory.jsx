@@ -39,15 +39,12 @@ const BulkUpdateInventory = ({
         const monthData = data.availability.find(
           (item) => item.year === selectedYear && item.month === selectedMonth
         )
-        if (monthData) {
-          const newQuantities = {}
-          monthData.days.forEach(({ day, quantity }) => {
-            newQuantities[day] = quantity
-          })
-          setQuantities(newQuantities)
-        } else {
-          setQuantities({})
+        const newQuantities = {}
+        for (let day = 1; day <= 31; day++) {
+          const dayData = monthData?.days.find((d) => d.day === day)
+          newQuantities[day] = dayData ? dayData.quantity : null
         }
+        setQuantities(newQuantities)
       },
     }
   )
@@ -61,7 +58,11 @@ const BulkUpdateInventory = ({
   }
 
   const handleQuantityChange = (day, value) => {
-    setQuantities((prev) => ({ ...prev, [day]: parseInt(value) || 0 }))
+    const newValue = value === '' ? null : parseInt(value)
+    setQuantities((prev) => ({
+      ...prev,
+      [day]: newValue === data.MaxQuantity ? null : newValue,
+    }))
   }
 
   const updateMutation = useMutation(
@@ -82,10 +83,12 @@ const BulkUpdateInventory = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const days = Object.entries(quantities).map(([day, quantity]) => ({
-      day: parseInt(day),
-      quantity,
-    }))
+    const days = Object.entries(quantities)
+      .filter(([_, quantity]) => quantity !== null)
+      .map(([day, quantity]) => ({
+        day: parseInt(day),
+        quantity,
+      }))
     const updatedAvailability = {
       year: selectedYear,
       month: selectedMonth,
@@ -112,18 +115,21 @@ const BulkUpdateInventory = ({
     for (let day = 1; day <= daysInMonth; day++) {
       const isDisabled =
         new Date(selectedYear, selectedMonth - 1, day) < currentDate
+      const quantity = quantities[day]
+      const displayValue = quantity === null ? data.MaxQuantity : quantity
+
       calendarDays.push(
         <div key={day} className='border p-2 h-24'>
           <div className='font-bold'>{day}</div>
           <input
             type='number'
-            value={quantities[day] || 0}
+            value={displayValue}
             onChange={(e) => handleQuantityChange(day, e.target.value)}
             className={`w-full p-1 mt-1 border rounded ${
               isDisabled ? 'bg-gray-200' : ''
-            }`}
-            min='0'
+            } ${quantity === null ? 'text-gray-500' : ''}`}
             disabled={isDisabled}
+            min='0'
           />
         </div>
       )
@@ -150,6 +156,9 @@ const BulkUpdateInventory = ({
         <h2 className='text-2xl font-bold mb-4'>
           Update Inventory for {itemName}
         </h2>
+        <p className='mb-4'>
+          Default quantity: {data?.MaxQuantity || 'Loading...'}
+        </p>
         <form onSubmit={handleSubmit}>
           <div className='flex justify-between items-center mb-4'>
             <div className='flex items-center'>
