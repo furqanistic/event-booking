@@ -70,11 +70,7 @@ const Calendar = () => {
     <div className='flex flex-wrap items-center justify-center gap-4 p-2 bg-gray-100 text-xs'>
       <div className='flex items-center'>
         <div className='w-4 h-4 bg-blue-100 mr-2'></div>
-        <span>Event</span>
-      </div>
-      <div className='flex items-center'>
-        <div className='w-4 h-4 bg-orange-100 mr-2'></div>
-        <span>Return</span>
+        <span>In-Transit</span>
       </div>
       <div className='flex items-center'>
         <div className='w-4 h-4 bg-purple-100 mr-2'></div>
@@ -88,32 +84,68 @@ const Calendar = () => {
 
   const getEventsForDay = (day, month, year) => {
     const currentDay = new Date(year, month, day)
-    const dayEvents = fetchedEvents.filter((event) => {
-      const eventStart = new Date(event.start)
-      const eventEnd = new Date(event.end)
-      const destinationInfo = destinationData[event.destination] || {
-        daysToReach: 0,
-        daysToReturn: 0,
-        cleaningDays: 0,
-      }
+    const dayEvents = fetchedEvents
+      .filter((event) => {
+        const eventStart = new Date(event.start)
+        const eventEnd = new Date(event.end)
+        const destinationInfo = destinationData[event.destination] || {
+          daysToReach: 0,
+          daysToReturn: 0,
+          cleaningDays: 0,
+        }
 
-      const returnStart = new Date(eventEnd)
-      returnStart.setDate(returnStart.getDate() + 1)
-      const returnEnd = new Date(returnStart)
-      returnEnd.setDate(returnEnd.getDate() + destinationInfo.daysToReturn - 1)
+        const returnStart = new Date(eventEnd)
+        returnStart.setDate(returnStart.getDate() + 1)
+        const returnEnd = new Date(returnStart)
+        returnEnd.setDate(
+          returnEnd.getDate() + destinationInfo.daysToReturn - 1
+        )
 
-      const cleaningDay = new Date(returnEnd)
-      cleaningDay.setDate(cleaningDay.getDate() + 1)
+        const cleaningDay = new Date(returnEnd)
+        cleaningDay.setDate(cleaningDay.getDate() + 1)
 
-      return currentDay >= eventStart && currentDay <= cleaningDay
+        return currentDay >= eventStart && currentDay <= cleaningDay
+      })
+      .map((event) => {
+        const eventStart = new Date(event.start)
+        const eventEnd = new Date(event.end)
+        const destinationInfo = destinationData[event.destination] || {
+          daysToReach: 0,
+          daysToReturn: 0,
+          cleaningDays: 0,
+        }
+
+        const returnStart = new Date(eventEnd)
+        returnStart.setDate(returnStart.getDate() + 1)
+        const returnEnd = new Date(returnStart)
+        returnEnd.setDate(
+          returnEnd.getDate() + destinationInfo.daysToReturn - 1
+        )
+
+        const cleaningDay = new Date(returnEnd)
+        cleaningDay.setDate(cleaningDay.getDate() + 1)
+
+        return {
+          ...event,
+          isStart: eventStart.toDateString() === currentDay.toDateString(),
+          isEnd: eventEnd.toDateString() === currentDay.toDateString(),
+          isMiddle: eventStart < currentDay && eventEnd > currentDay,
+          isReturn: currentDay > eventEnd && currentDay <= returnEnd,
+          isCleaning: currentDay.toDateString() === cleaningDay.toDateString(),
+        }
+      })
+
+    // Sort events by start date and assign positions
+    dayEvents.sort((a, b) => new Date(a.start) - new Date(b.start))
+    dayEvents.forEach((event, index) => {
+      event.position = index
     })
 
-    let isDraftDay = false
-    if (draftEvent && draftEvent.start && draftEvent.end) {
-      const draftStart = new Date(draftEvent.start)
-      const draftEnd = new Date(draftEvent.end)
-      isDraftDay = currentDay >= draftStart && currentDay <= draftEnd
-    }
+    const isDraftDay =
+      draftEvent && draftEvent.start && draftEvent.end
+        ? currentDay >= new Date(draftEvent.start) &&
+          currentDay <= new Date(draftEvent.end)
+        : false
 
     const isAvailable = checkMaterialAvailability(
       currentDay,
@@ -123,41 +155,42 @@ const Calendar = () => {
     return { events: dayEvents, isDraftDay, isAvailable }
   }
 
-  const EventItem = ({ event, currentDate }) => {
-    const eventStart = new Date(event.start)
-    const eventEnd = new Date(event.end)
-    const destinationInfo = destinationData[event.destination] || {
-      daysToReach: 0,
-      daysToReturn: 0,
-      cleaningDays: 0,
+  const EventItem = ({ event, isStart, isEnd, isMiddle }) => {
+    let bgColor = 'bg-blue-100'
+    let label = ''
+
+    if (event.isReturn) {
+      bgColor = 'bg-blue-100'
+      label = 'Return'
+    } else if (event.isCleaning) {
+      bgColor = 'bg-purple-100'
+      label = 'Cleaning'
     }
 
-    const returnStart = new Date(eventEnd)
-    returnStart.setDate(returnStart.getDate() + 1)
-    const returnEnd = new Date(returnStart)
-    returnEnd.setDate(returnEnd.getDate() + destinationInfo.daysToReturn - 1)
-
-    const cleaningDay = new Date(returnEnd)
-    cleaningDay.setDate(cleaningDay.getDate() + 1)
-
-    let bgColor = 'bg-blue-100' // Default color for event days
-
-    if (currentDate > eventEnd && currentDate <= returnEnd) {
-      bgColor = 'bg-orange-100' // Color for return days
-    } else if (currentDate.getTime() === cleaningDay.getTime()) {
-      bgColor = 'bg-purple-100' // Color for cleaning day
-    }
     return (
       <div
-        className={`p-1 mb-1 rounded text-xs cursor-pointer hover:bg-opacity-75 transition-colors duration-200 ${bgColor}`}
+        className={`h-9 ${bgColor} 
+        cursor-pointer hover:bg-opacity-75 transition-colors duration-200
+        text-xs sm:text-sm overflow-hidden flex items-center
+        absolute left-0 right-0`}
+        style={{
+          width: 'calc(100% + 2px)',
+          marginLeft: '-1px',
+          marginRight: '-1px',
+        }}
         onClick={() => !event.isDraft && setSelectedEvent(event)}
       >
-        <div className='font-semibold truncate'>
-          {event.title || event.eventType}
-        </div>
-        <div className='text-gray-600 text-xs'>
-          {formatTime(event.start)} - {formatTime(event.end)}
-        </div>
+        {isStart && (
+          <div className='pl-2 flex flex-col overflow-hidden flex-grow'>
+            <span className='font-semibold whitespace-nowrap overflow-hidden text-ellipsis'>
+              {event.title || event.eventType}
+            </span>
+            <span className='text-gray-600 text-xs whitespace-nowrap overflow-hidden text-ellipsis'>
+              {event.destination || event.eventType}
+            </span>
+          </div>
+        )}
+        {!isStart && label && <div className='pl-2 text-xs'>{label}</div>}
       </div>
     )
   }
@@ -252,14 +285,14 @@ const Calendar = () => {
 
   return (
     <div className='flex flex-col h-full bg-white'>
-      <div className='flex flex-col sm:flex-row items-center justify-between p-4 bg-gray-50 sticky top-0 '>
-        <h2 className='text-xl font-semibold text-gray-800 mb-2 sm:mb-0 flex items-center'>
-          <CalendarIcon className='mr-2' />
+      <div className='flex flex-col sm:flex-row items-center justify-between p-2 sm:p-4 bg-gray-50 sticky top-0 z-20'>
+        <h2 className='text-lg sm:text-xl font-semibold text-gray-800 mb-2 sm:mb-0 flex items-center'>
+          <CalendarIcon className='mr-2' size={20} />
           {months[currentDate.getMonth()]} de {currentDate.getFullYear()}
         </h2>
         <div className='flex items-center space-x-2'>
           <button
-            className='px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200'
+            className='px-2 py-1 text-xs sm:text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200'
             onClick={() => setCurrentDate(new Date())}
           >
             Hoy
@@ -268,22 +301,22 @@ const Calendar = () => {
             onClick={prevMonth}
             className='p-1 rounded-full hover:bg-gray-200 transition-colors duration-200'
           >
-            <ChevronLeftIcon size={20} className='text-blue-600' />
+            <ChevronLeftIcon size={18} className='text-blue-600' />
           </button>
           <button
             onClick={nextMonth}
             className='p-1 rounded-full hover:bg-gray-200 transition-colors duration-200'
           >
-            <ChevronRightIcon size={20} className='text-blue-600' />
+            <ChevronRightIcon size={18} className='text-blue-600' />
           </button>
         </div>
       </div>
       <ColorLegend />
-      <div className='grid grid-cols-7 bg-gray-100 border-b border-gray-200 sticky top-16 '>
+      <div className='grid grid-cols-7 bg-gray-100 border-b border-gray-200 sticky top-16 z-10'>
         {weekdays.map((day) => (
           <div
             key={day}
-            className='text-center py-2 text-xs sm:text-sm font-medium text-gray-700'
+            className='text-center py-1 sm:py-2 text-xs font-medium text-gray-700'
           >
             {day}
           </div>
@@ -299,7 +332,7 @@ const Calendar = () => {
             </p>
           </div>
         )}
-        <div className='grid grid-cols-7 auto-rows-fr gap-px bg-gray-200 p-px min-h-full'>
+        <div className='grid grid-cols-7 bg-gray-200 min-h-full'>
           {calendarDays.map((dayObj, index) => {
             const {
               events: dayEvents,
@@ -307,36 +340,36 @@ const Calendar = () => {
               isAvailable,
             } = getEventsForDay(dayObj.day, dayObj.month, dayObj.year)
 
-            const currentDate = new Date(dayObj.year, dayObj.month, dayObj.day)
-
             return (
               <div
                 key={index}
-                className={`p-1 ${
+                className={`${
                   dayObj.currentMonth ? 'bg-white' : 'bg-gray-50 text-gray-400'
                 } ${isToday(dayObj.day) ? 'bg-blue-50' : ''} 
-                ${isDraftDay ? 'bg-yellow-50' : ''}
-                ${!isAvailable ? 'bg-red-100' : ''}
-                overflow-hidden flex flex-col min-h-[100px]`}
+        ${isDraftDay ? 'bg-yellow-50' : ''}
+        ${!isAvailable ? 'bg-red-100' : ''}
+        overflow-hidden flex flex-col min-h-[80px] sm:min-h-[100px] relative border-r border-b border-gray-200`}
               >
                 <span
-                  className={`text-xs sm:text-sm font-semibold ${
+                  className={`text-xs sm:text-sm font-semibold p-1 ${
                     isToday(dayObj.day) ? 'text-blue-600' : ''
                   }`}
                 >
                   {dayObj.day}
                 </span>
-                <div className='flex-grow overflow-y-auto'>
+                <div className='flex-grow flex flex-col gap-1 relative'>
                   {dayEvents.map((event, eventIndex) => (
                     <EventItem
                       key={event.id || `event-${eventIndex}`}
                       event={event}
-                      currentDate={currentDate}
+                      isStart={event.isStart}
+                      isEnd={event.isEnd}
+                      isMiddle={event.isMiddle}
                     />
                   ))}
                 </div>
                 {!isAvailable && (
-                  <div className='text-xs text-red-600 mt-1'>Unavailable</div>
+                  <div className='text-xs text-red-600 p-1'>Unavailable</div>
                 )}
               </div>
             )

@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react'
-import { toast } from 'react-hot-toast'
+import React, { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from 'react-query'
 import { axiosInstance } from '../../config'
 
@@ -12,7 +11,6 @@ const BulkUpdateInventory = ({
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [quantities, setQuantities] = useState({})
-  const [defaultQuantity, setDefaultQuantity] = useState(0)
   const queryClient = useQueryClient()
 
   const months = [
@@ -66,15 +64,6 @@ const BulkUpdateInventory = ({
     setQuantities((prev) => ({ ...prev, [day]: parseInt(value) || 0 }))
   }
 
-  const applyDefaultQuantity = () => {
-    const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate()
-    const newQuantities = {}
-    for (let i = 1; i <= daysInMonth; i++) {
-      newQuantities[i] = defaultQuantity
-    }
-    setQuantities(newQuantities)
-  }
-
   const updateMutation = useMutation(
     (updatedData) =>
       axiosInstance.patch(`/materials/${itemId}/bulk-update`, updatedData),
@@ -113,6 +102,7 @@ const BulkUpdateInventory = ({
       selectedMonth - 1,
       1
     ).getDay()
+    const currentDate = new Date()
 
     const calendarDays = []
     for (let i = 0; i < firstDayOfMonth; i++) {
@@ -120,6 +110,8 @@ const BulkUpdateInventory = ({
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
+      const isDisabled =
+        new Date(selectedYear, selectedMonth - 1, day) < currentDate
       calendarDays.push(
         <div key={day} className='border p-2 h-24'>
           <div className='font-bold'>{day}</div>
@@ -127,8 +119,11 @@ const BulkUpdateInventory = ({
             type='number'
             value={quantities[day] || 0}
             onChange={(e) => handleQuantityChange(day, e.target.value)}
-            className='w-full p-1 mt-1 border rounded'
+            className={`w-full p-1 mt-1 border rounded ${
+              isDisabled ? 'bg-gray-200' : ''
+            }`}
             min='0'
+            disabled={isDisabled}
           />
         </div>
       )
@@ -183,24 +178,6 @@ const BulkUpdateInventory = ({
                   )
                 })}
               </select>
-            </div>
-            <div className='flex items-center'>
-              <input
-                type='number'
-                value={defaultQuantity}
-                onChange={(e) =>
-                  setDefaultQuantity(parseInt(e.target.value) || 0)
-                }
-                className='p-2 border border-gray-300 rounded-md mr-2'
-                min='0'
-              />
-              <button
-                type='button'
-                onClick={applyDefaultQuantity}
-                className='px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600'
-              >
-                Apply to All Days
-              </button>
             </div>
           </div>
 

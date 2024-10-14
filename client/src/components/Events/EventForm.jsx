@@ -14,6 +14,8 @@ const EventForm = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     eventType: 'Congreso',
+    title: '',
+    description: '',
     start: null,
     end: null,
     materials: false,
@@ -148,6 +150,8 @@ const EventForm = () => {
       address: '',
       reference: '',
       department: '',
+      title: '',
+      description: '',
       province: '',
       district: '',
       destination: '',
@@ -272,6 +276,8 @@ const EventForm = () => {
 
     const newEvent = {
       eventType: formData.eventType,
+      title: formData.title,
+      description: formData.description,
       start: formData.start,
       end: formData.end,
       materials: formData.materials,
@@ -286,7 +292,6 @@ const EventForm = () => {
         merchandisingId: item._id,
         name: item.name,
         quantity: item.quantity,
-        // We don't need to add date here as it will be handled in the backend
       })),
       address: formData.address,
       reference: formData.reference,
@@ -342,6 +347,32 @@ const EventForm = () => {
 
       <div className='flex-grow overflow-y-auto px-4 py-2'>
         <form className='space-y-4'>
+          <div>
+            <label className='block text-sm font-medium text-black mb-1'>
+              Título del evento:
+            </label>
+            <input
+              type='text'
+              name='title'
+              value={formData.title}
+              onChange={handleInputChange}
+              className='w-full border border-gray-300 text-gray-900 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+              required
+            />
+          </div>
+
+          <div>
+            <label className='block text-sm font-medium text-black mb-1'>
+              Descripción del evento:
+            </label>
+            <textarea
+              name='description'
+              value={formData.description}
+              onChange={handleInputChange}
+              className='w-full border border-gray-300 text-gray-900 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+              rows='3'
+            />
+          </div>
           <div>
             <label className='block text-sm font-medium text-blue-600 mb-1'>
               Tipo de evento:

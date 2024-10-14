@@ -7,6 +7,13 @@ const EventSchema = new mongoose.Schema(
       required: true,
       enum: ['Congreso', 'Seminario', 'Taller', 'Conferencia'],
     },
+    title: {
+      type: String,
+      required: true,
+    },
+    description: {
+      type: String,
+    },
     start: {
       type: Date,
       required: true,

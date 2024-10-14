@@ -1,5 +1,5 @@
 import { CalendarIcon, PencilIcon, PlusIcon, TrashIcon } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { Toaster, toast } from 'react-hot-toast'
 import { useQuery, useQueryClient } from 'react-query'
 import { axiosInstance } from '../../config'
@@ -13,14 +13,8 @@ const InventorySection = () => {
   const [currentItem, setCurrentItem] = useState(null)
   const queryClient = useQueryClient()
 
-  const { data: materials, isLoading: isMaterialsLoading } = useQuery(
-    'materials',
-    () => axiosInstance.get('materials').then((res) => res.data.data.items)
-  )
-
-  const { data: merchandising, isLoading: isMerchandisingLoading } = useQuery(
-    'merchandising',
-    () => axiosInstance.get('merchandising').then((res) => res.data.data.items)
+  const { data: items, isLoading } = useQuery(activeTab, () =>
+    axiosInstance.get(activeTab).then((res) => res.data.data.items)
   )
 
   const showNotification = useCallback((message, type = 'success') => {
@@ -71,16 +65,7 @@ const InventorySection = () => {
     const formData = new FormData(e.target)
     const itemData = Object.fromEntries(formData.entries())
 
-    // Process availability data
-    const availability = []
-    const dates = formData.getAll('date')
-    const quantities = formData.getAll('quantity')
-    for (let i = 0; i < dates.length; i++) {
-      if (dates[i] && quantities[i]) {
-        availability.push({ date: dates[i], quantity: parseInt(quantities[i]) })
-      }
-    }
-    itemData.availability = availability
+    itemData.quantity = parseInt(itemData.quantity, 10)
 
     if (currentItem) {
       await handleUpdate({ ...currentItem, ...itemData })
@@ -116,6 +101,7 @@ const InventorySection = () => {
           <tr className='bg-gray-200 text-gray-600 uppercase text-sm leading-normal'>
             <th className='py-3 px-6 text-left'>Name</th>
             <th className='py-3 px-6 text-left'>Image</th>
+            <th className='py-3 px-6 text-left'>Quantity</th>
             <th className='py-3 px-6 text-center'>Actions</th>
           </tr>
         </thead>
@@ -138,6 +124,7 @@ const InventorySection = () => {
                     />
                   )}
                 </td>
+                <td className='py-3 px-6 text-left'>{item.MaxQuantity || 0}</td>
                 <td className='py-3 px-6 text-center'>
                   <div className='flex item-center justify-center'>
                     <button
@@ -212,14 +199,7 @@ const InventorySection = () => {
             </div>
           </div>
           <div className='-mx-4 sm:-mx-8 px-4 sm:px-8 py-4 overflow-x-auto'>
-            {activeTab === 'materials' &&
-              (isMaterialsLoading ? <p>Loading...</p> : renderTable(materials))}
-            {activeTab === 'merchandising' &&
-              (isMerchandisingLoading ? (
-                <p>Loading...</p>
-              ) : (
-                renderTable(merchandising)
-              ))}
+            {isLoading ? <p>Loading...</p> : renderTable(items)}
           </div>
         </div>
 
@@ -269,6 +249,23 @@ const InventorySection = () => {
                         id='imagePath'
                         name='imagePath'
                         defaultValue={currentItem?.imagePath}
+                        className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
+                      />
+                    </div>
+                    <div className='mb-4'>
+                      <label
+                        htmlFor='quantity'
+                        className='block text-gray-700 text-sm font-bold mb-2'
+                      >
+                        Quantity
+                      </label>
+                      <input
+                        type='number'
+                        id='MaxQuantity'
+                        name='MaxQuantity'
+                        defaultValue={currentItem?.MaxQuantity || 0}
+                        min='0'
+                        required
                         className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
                       />
                     </div>

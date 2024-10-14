@@ -43,6 +43,11 @@ const InventoryItemSchema = new mongoose.Schema({
   imagePath: {
     type: String,
   },
+  MaxQuantity: {
+    type: Number,
+    required: true,
+    min: 0,
+  },
 
   availability: [MonthlyAvailabilitySchema],
 })

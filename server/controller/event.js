@@ -2,6 +2,115 @@ import { destinationData } from '../../client/src/dataFile.js'
 import Event from '../models/Event.js'
 import { Material, Merchandising } from '../models/InventoryItem.js'
 
+const restockItems = async (items, Model, startDate, endDate, destination) => {
+  const { daysToReach, daysToReturn, cleaningDays } = destinationData[
+    destination
+  ] || { daysToReach: 0, daysToReturn: 0, cleaningDays: 0 }
+
+  const fullStartDate = new Date(startDate)
+  fullStartDate.setDate(fullStartDate.getDate() - daysToReach)
+
+  const fullEndDate = new Date(endDate)
+  fullEndDate.setDate(fullEndDate.getDate() + daysToReturn + cleaningDays)
+
+  for (let item of items) {
+    const doc = await Model.findById(item.materialId || item.merchandisingId)
+    if (!doc) {
+      console.warn(
+        `Item with id ${item.materialId || item.merchandisingId} not found`
+      )
+      continue
+    }
+
+    for (
+      let date = new Date(fullStartDate);
+      date <= fullEndDate;
+      date.setDate(date.getDate() + 1)
+    ) {
+      const year = date.getFullYear()
+      const month = date.getMonth() + 1
+      const day = date.getDate()
+
+      let monthEntry = doc.availability.find(
+        (entry) => entry.year === year && entry.month === month
+      )
+      if (!monthEntry) {
+        monthEntry = { year, month, days: [] }
+        doc.availability.push(monthEntry)
+      }
+
+      let dayEntry = monthEntry.days.find((d) => d.day === day)
+      if (!dayEntry) {
+        dayEntry = { day, quantity: 0 }
+        monthEntry.days.push(dayEntry)
+      }
+
+      dayEntry.quantity += item.quantity
+    }
+
+    // Sort availability array
+    doc.availability.sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year
+      return a.month - b.month
+    })
+
+    // Sort days array within each month
+    doc.availability.forEach((month) => {
+      month.days.sort((a, b) => a.day - b.day)
+    })
+
+    await doc.save()
+  }
+}
+
+export const deleteEvent = async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id)
+    if (!event) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Event not found',
+      })
+    }
+
+    // Restock materials
+    if (event.materials && event.selectedMaterials.length > 0) {
+      await restockItems(
+        event.selectedMaterials,
+        Material,
+        event.start,
+        event.end,
+        event.destination
+      )
+    }
+
+    // Restock merchandising
+    if (event.merchandising && event.selectedMerchandising.length > 0) {
+      await restockItems(
+        event.selectedMerchandising,
+        Merchandising,
+        event.start,
+        event.end,
+        event.destination
+      )
+    }
+
+    // Delete the event
+    await Event.findByIdAndDelete(req.params.id)
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Event deleted and items restocked successfully',
+    })
+  } catch (err) {
+    console.error('Error in deleteEvent:', err)
+    res.status(400).json({
+      status: 'error',
+      message: err.message,
+    })
+  }
+}
+
 const updateItemAvailability = async (items, model, startDate, endDate) => {
   for (let item of items) {
     const doc = await model.findById(item.materialId || item.merchandisingId)
@@ -49,6 +158,8 @@ export const createEvent = async (req, res) => {
       destination,
       selectedMaterials,
       selectedMerchandising,
+      title,
+      description,
     } = req.body
 
     // Validate required fields
@@ -60,7 +171,8 @@ export const createEvent = async (req, res) => {
       !department ||
       !province ||
       !district ||
-      !destination
+      !destination ||
+      !title
     ) {
       return res.status(400).json({
         status: 'error',
@@ -106,6 +218,8 @@ export const createEvent = async (req, res) => {
       province,
       district,
       destination,
+      title,
+      description,
     })
 
     const savedEvent = await newEvent.save()
@@ -200,27 +314,6 @@ export const updateEvent = async (req, res) => {
   }
 }
 
-export const deleteEvent = async (req, res) => {
-  try {
-    const event = await Event.findByIdAndDelete(req.params.id)
-    if (!event) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Event not found',
-      })
-    }
-    res.status(204).json({
-      status: 'success',
-      data: null,
-    })
-  } catch (err) {
-    res.status(400).json({
-      status: 'error',
-      message: err.message,
-    })
-  }
-}
-
 // Total number of events
 export const getTotalEvents = async (req, res) => {
   try {
@@ -243,8 +336,8 @@ export const getTotalEvents = async (req, res) => {
 const createInventoryController = (Model) => ({
   create: async (req, res) => {
     try {
-      const { name, imagePath, availability } = req.body
-      const newItem = new Model({ name, imagePath, availability })
+      const { name, imagePath, MaxQuantity, availability } = req.body
+      const newItem = new Model({ name, imagePath, MaxQuantity, availability })
       await newItem.save()
       res.status(201).json({
         status: 'success',
