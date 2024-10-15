@@ -155,7 +155,7 @@ const Calendar = () => {
     return { events: dayEvents, isDraftDay, isAvailable }
   }
 
-  const EventItem = ({ event, isStart, isEnd, isMiddle }) => {
+  const EventItem = ({ event, isStart, isEnd, isMiddle, position }) => {
     let bgColor = 'bg-blue-100'
     let label = ''
 
@@ -169,14 +169,15 @@ const Calendar = () => {
 
     return (
       <div
-        className={`h-9 ${bgColor} 
+        className={`h-5 ${bgColor} 
         cursor-pointer hover:bg-opacity-75 transition-colors duration-200
-        text-xs sm:text-sm overflow-hidden flex items-center
+        text-xs overflow-hidden flex items-center
         absolute left-0 right-0`}
         style={{
           width: 'calc(100% + 2px)',
           marginLeft: '-1px',
           marginRight: '-1px',
+          top: `${position * 22 + 2}px`, // Position events vertically with margin
         }}
         onClick={() => !event.isDraft && setSelectedEvent(event)}
       >
@@ -184,9 +185,6 @@ const Calendar = () => {
           <div className='pl-2 flex flex-col overflow-hidden flex-grow'>
             <span className='font-semibold whitespace-nowrap overflow-hidden text-ellipsis'>
               {event.title || event.eventType}
-            </span>
-            <span className='text-gray-600 text-xs whitespace-nowrap overflow-hidden text-ellipsis'>
-              {event.destination || event.eventType}
             </span>
           </div>
         )}
@@ -348,7 +346,7 @@ const Calendar = () => {
                 } ${isToday(dayObj.day) ? 'bg-blue-50' : ''} 
         ${isDraftDay ? 'bg-yellow-50' : ''}
         ${!isAvailable ? 'bg-red-100' : ''}
-        overflow-hidden flex flex-col min-h-[80px] sm:min-h-[100px] relative border-r border-b border-gray-200`}
+        overflow-hidden flex flex-col min-h-[120px] sm:min-h-[140px] relative border-r border-b border-gray-200`}
               >
                 <span
                   className={`text-xs sm:text-sm font-semibold p-1 ${
@@ -365,6 +363,7 @@ const Calendar = () => {
                       isStart={event.isStart}
                       isEnd={event.isEnd}
                       isMiddle={event.isMiddle}
+                      position={eventIndex} // Pass the event's position
                     />
                   ))}
                 </div>

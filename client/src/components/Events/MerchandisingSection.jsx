@@ -141,7 +141,7 @@ const MerchandisingSection = ({ formData, setFormData }) => {
               <div>
                 <p className='font-medium'>{item.name}</p>
                 <p className='text-sm text-gray-500'>
-                  {item.totalQuantity} available(s)
+                  {item.MaxQuantity} available(s)
                 </p>
               </div>
             </div>

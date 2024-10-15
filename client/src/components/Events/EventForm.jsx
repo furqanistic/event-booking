@@ -83,6 +83,7 @@ const EventForm = () => {
         endDate: formData.end,
         destination: formData.destination,
       }),
+
     {
       onError: (error) => {
         console.error('Error updating inventory:', error)
@@ -270,7 +271,6 @@ const EventForm = () => {
       setFormError('Please select start and end dates for the event.')
       return
     }
-    console.log(formData)
     setIsLoading(true)
     setFormError(null)
 

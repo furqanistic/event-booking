@@ -350,6 +350,33 @@ const createInventoryController = (Model) => ({
       })
     }
   },
+  update: async (req, res) => {
+    try {
+      const { id } = req.params
+      const updateData = req.body
+
+      const updatedItem = await Model.findByIdAndUpdate(id, updateData, {
+        new: true,
+        runValidators: true,
+      })
+      if (!updatedItem) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Item not found',
+        })
+      }
+
+      res.status(200).json({
+        status: 'success',
+        data: { item: updatedItem },
+      })
+    } catch (err) {
+      res.status(400).json({
+        status: 'error',
+        message: err.message,
+      })
+    }
+  },
 
   getAll: async (req, res) => {
     try {
@@ -419,10 +446,11 @@ const createInventoryController = (Model) => ({
 
         let dayEntry = monthEntry.days.find((d) => d.day === day)
         if (!dayEntry) {
-          dayEntry = { day, quantity: Number.MAX_SAFE_INTEGER } // Assume maximum availability if no entry exists
+          dayEntry = { day, quantity: material.MaxQuantity } // Use MaxQuantity if no entry exists
           monthEntry.days.push(dayEntry)
         }
 
+        // Subtract the booked quantity from the available quantity
         dayEntry.quantity = Math.max(0, dayEntry.quantity - quantity)
       }
 
@@ -507,7 +535,6 @@ const createInventoryController = (Model) => ({
   checkAvailability: async (req, res) => {
     try {
       const { items, startDate, endDate } = req.body
-
       if (!items || !Array.isArray(items) || !startDate || !endDate) {
         return res
           .status(400)
@@ -551,14 +578,14 @@ const createInventoryController = (Model) => ({
             )
 
             if (!monthData) {
-              minAvailableQuantity = 0
+              minAvailableQuantity = material.MaxQuantity
               break
             }
 
             const dayData = monthData.days.find((d) => d.day === day)
 
             if (!dayData) {
-              minAvailableQuantity = 0
+              minAvailableQuantity = material.MaxQuantity
               break
             }
 
@@ -573,6 +600,7 @@ const createInventoryController = (Model) => ({
             available: minAvailableQuantity >= item.quantity,
             requestedQuantity: item.quantity,
             availableQuantity: minAvailableQuantity,
+            defaultQuantity: material.MaxQuantity,
           }
         })
       )

@@ -48,7 +48,6 @@ const BulkUpdateInventory = ({
       },
     }
   )
-
   const handleMonthChange = (e) => {
     setSelectedMonth(parseInt(e.target.value))
   }

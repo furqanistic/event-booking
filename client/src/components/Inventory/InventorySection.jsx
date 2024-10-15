@@ -254,7 +254,7 @@ const InventorySection = () => {
                     </div>
                     <div className='mb-4'>
                       <label
-                        htmlFor='quantity'
+                        htmlFor='MaxQuantity'
                         className='block text-gray-700 text-sm font-bold mb-2'
                       >
                         Quantity
