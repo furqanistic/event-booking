@@ -353,24 +353,90 @@ const createInventoryController = (Model) => ({
   update: async (req, res) => {
     try {
       const { id } = req.params
-      const updateData = req.body
+      const { name, imagePath, MaxQuantity, startDate, endDate } = req.body
 
-      const updatedItem = await Model.findByIdAndUpdate(id, updateData, {
-        new: true,
-        runValidators: true,
-      })
-      if (!updatedItem) {
+      const item = await Model.findById(id)
+      if (!item) {
         return res.status(404).json({
           status: 'error',
           message: 'Item not found',
         })
       }
 
+      // Calculate the quantity difference
+      const quantityDifference = MaxQuantity - item.MaxQuantity
+
+      // Update basic information
+      item.name = name
+      item.imagePath = imagePath
+      item.MaxQuantity = MaxQuantity
+
+      // If dates are provided, update availability
+      if (startDate && endDate) {
+        const start = new Date(startDate)
+        const end = new Date(endDate)
+
+        // Ensure start date is not in the past
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        if (start < today) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Start date cannot be in the past',
+          })
+        }
+
+        // Update availability for each day in the range
+        for (
+          let date = new Date(start);
+          date <= end;
+          date.setDate(date.getDate() + 1)
+        ) {
+          const year = date.getFullYear()
+          const month = date.getMonth() + 1
+          const day = date.getDate()
+
+          let monthEntry = item.availability.find(
+            (entry) => entry.year === year && entry.month === month
+          )
+          if (!monthEntry) {
+            monthEntry = { year, month, days: [] }
+            item.availability.push(monthEntry)
+          }
+
+          let dayEntry = monthEntry.days.find((d) => d.day === day)
+          if (!dayEntry) {
+            dayEntry = { day, quantity: item.MaxQuantity }
+            monthEntry.days.push(dayEntry)
+          }
+
+          // Update the quantity, ensuring it doesn't go below 0
+          dayEntry.quantity = Math.max(
+            0,
+            dayEntry.quantity + quantityDifference
+          )
+        }
+
+        // Sort availability array
+        item.availability.sort((a, b) => {
+          if (a.year !== b.year) return a.year - b.year
+          return a.month - b.month
+        })
+
+        // Sort days array within each month
+        item.availability.forEach((month) => {
+          month.days.sort((a, b) => a.day - b.day)
+        })
+      }
+
+      await item.save()
+
       res.status(200).json({
         status: 'success',
-        data: { item: updatedItem },
+        data: { item },
       })
     } catch (err) {
+      console.error('Error in update:', err)
       res.status(400).json({
         status: 'error',
         message: err.message,
@@ -416,7 +482,6 @@ const createInventoryController = (Model) => ({
 
       const start = new Date(startDate)
       const end = new Date(endDate)
-
       const { daysToReach, daysToReturn, cleaningDays } = destinationData[
         destination
       ] || { daysToReach: 0, daysToReturn: 0, cleaningDays: 0 }
@@ -424,6 +489,7 @@ const createInventoryController = (Model) => ({
       // Calculate the full range of dates to update
       const fullStartDate = new Date(start)
       fullStartDate.setDate(fullStartDate.getDate() - daysToReach)
+
       const fullEndDate = new Date(end)
       fullEndDate.setDate(fullEndDate.getDate() + daysToReturn + cleaningDays)
 
@@ -439,6 +505,7 @@ const createInventoryController = (Model) => ({
         let monthEntry = material.availability.find(
           (entry) => entry.year === year && entry.month === month
         )
+
         if (!monthEntry) {
           monthEntry = { year, month, days: [] }
           material.availability.push(monthEntry)
@@ -552,7 +619,7 @@ const createInventoryController = (Model) => ({
 
       const availabilityChecks = await Promise.all(
         items.map(async (item) => {
-          const material = await Material.findById(item._id)
+          const material = await Model.findById(item._id)
           if (!material) {
             return {
               id: item._id,
@@ -578,15 +645,21 @@ const createInventoryController = (Model) => ({
             )
 
             if (!monthData) {
-              minAvailableQuantity = material.MaxQuantity
-              break
+              minAvailableQuantity = Math.min(
+                minAvailableQuantity,
+                material.MaxQuantity
+              )
+              continue
             }
 
             const dayData = monthData.days.find((d) => d.day === day)
 
             if (!dayData) {
-              minAvailableQuantity = material.MaxQuantity
-              break
+              minAvailableQuantity = Math.min(
+                minAvailableQuantity,
+                material.MaxQuantity
+              )
+              continue
             }
 
             minAvailableQuantity = Math.min(

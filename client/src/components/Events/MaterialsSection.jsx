@@ -8,9 +8,9 @@ import {
 import { useState } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
+import toast from 'react-hot-toast'
 import { useMutation, useQuery } from 'react-query'
 import { axiosInstance } from '../../config'
-
 const Loader = () => (
   <div className='flex justify-center items-center h-40'>
     <div className='relative w-20 h-20'>
@@ -88,11 +88,37 @@ const MaterialsSection = ({ formData, setFormData }) => {
   )
 
   const handleStartDateChange = (date) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    if (date < today) {
+      toast.error("You can't select a past date for the start date.")
+      return
+    }
+
     setStartDate(date)
     setAvailabilityChecked(false)
+
+    // If end date is before the new start date, update it
+    if (endDate && date > endDate) {
+      setEndDate(date)
+    }
   }
 
   const handleEndDateChange = (date) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    if (date < today) {
+      toast.error("You can't select a past date for the end date.")
+      return
+    }
+
+    if (startDate && date < startDate) {
+      toast.error("End date can't be earlier than start date.")
+      return
+    }
+
     setEndDate(date)
     setAvailabilityChecked(false)
   }
@@ -289,6 +315,7 @@ const MaterialsSection = ({ formData, setFormData }) => {
                       selectsStart
                       startDate={startDate}
                       endDate={endDate}
+                      minDate={new Date()} // Set minimum date to today
                       className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
                       placeholderText='Choose start date'
                     />
@@ -303,7 +330,7 @@ const MaterialsSection = ({ formData, setFormData }) => {
                       selectsEnd
                       startDate={startDate}
                       endDate={endDate}
-                      minDate={startDate}
+                      minDate={startDate || new Date()} // Set minimum date to start date or today
                       className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
                       placeholderText='Choose end date'
                     />

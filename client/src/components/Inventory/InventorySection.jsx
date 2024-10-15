@@ -39,7 +39,15 @@ const InventorySection = () => {
 
   const handleUpdate = async (updatedItem) => {
     try {
-      await axiosInstance.patch(`${activeTab}/${updatedItem._id}`, updatedItem)
+      const { _id, name, imagePath, MaxQuantity, startDate, endDate } =
+        updatedItem
+      const response = await axiosInstance.patch(`${activeTab}/${_id}`, {
+        name,
+        imagePath,
+        MaxQuantity,
+        startDate,
+        endDate,
+      })
       await queryClient.invalidateQueries(activeTab)
       closeModal()
       showNotification('Item updated successfully')
@@ -65,7 +73,7 @@ const InventorySection = () => {
     const formData = new FormData(e.target)
     const itemData = Object.fromEntries(formData.entries())
 
-    itemData.quantity = parseInt(itemData.quantity, 10)
+    itemData.MaxQuantity = parseInt(itemData.MaxQuantity, 10)
 
     if (currentItem) {
       await handleUpdate({ ...currentItem, ...itemData })
@@ -269,6 +277,40 @@ const InventorySection = () => {
                         className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
                       />
                     </div>
+                    {currentItem && (
+                      <>
+                        <div className='mb-4'>
+                          <label
+                            htmlFor='startDate'
+                            className='block text-gray-700 text-sm font-bold mb-2'
+                          >
+                            Start Date
+                          </label>
+                          <input
+                            type='date'
+                            id='startDate'
+                            name='startDate'
+                            min={new Date().toISOString().split('T')[0]}
+                            className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
+                          />
+                        </div>
+                        <div className='mb-4'>
+                          <label
+                            htmlFor='endDate'
+                            className='block text-gray-700 text-sm font-bold mb-2'
+                          >
+                            End Date
+                          </label>
+                          <input
+                            type='date'
+                            id='endDate'
+                            name='endDate'
+                            min={new Date().toISOString().split('T')[0]}
+                            className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div className='bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse'>
                     <button

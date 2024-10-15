@@ -136,6 +136,19 @@ const EventForm = () => {
   }
 
   const handleDateChange = (date, name) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    if (date < today) {
+      toast.error("You can't select a past date.")
+      return
+    }
+
+    if (name === 'end' && formData.start && date < formData.start) {
+      toast.error("End date can't be earlier than start date.")
+      return
+    }
+
     setFormData((prev) => ({ ...prev, [name]: date }))
   }
 
@@ -435,17 +448,19 @@ const EventForm = () => {
                 selected={formData.start}
                 onChange={(date) => handleDateChange(date, 'start')}
                 dateFormat='MMMM d, yyyy'
+                minDate={new Date()}
                 className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
               />
             </div>
             <div>
               <label className='block text-sm font-medium text-gray-700 mb-1'>
-                End Date & Tipme
+                End Date & Time
               </label>
               <DatePicker
                 selected={formData.end}
                 onChange={(date) => handleDateChange(date, 'end')}
                 dateFormat='MMMM d, yyyy'
+                minDate={formData.start || new Date()}
                 className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500'
               />
             </div>

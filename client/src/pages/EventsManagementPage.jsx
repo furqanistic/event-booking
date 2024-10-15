@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
+  Loader,
   MapPin,
   Package,
   ShoppingBag,
@@ -34,7 +35,7 @@ const EventsManagementPage = () => {
     eventId: null,
   })
   const queryClient = useQueryClient()
-
+  const [deletingEventId, setDeletingEventId] = useState(null)
   // Query for fetching events
   const {
     data: eventDetails,
@@ -55,12 +56,18 @@ const EventsManagementPage = () => {
 
   // Mutation for deleting an event
   const deleteMutation = useMutation(deleteEvent, {
+    onMutate: (eventId) => {
+      setDeletingEventId(eventId)
+    },
     onSuccess: (deletedEventId) => {
-      // Update the query cache to remove the deleted event
       queryClient.setQueryData('events', (oldData) =>
         oldData.filter((event) => event._id !== deletedEventId)
       )
       setDeleteConfirmation({ show: false, eventId: null })
+      setDeletingEventId(null)
+    },
+    onError: () => {
+      setDeletingEventId(null)
     },
   })
 
@@ -174,15 +181,25 @@ const EventsManagementPage = () => {
                                     : 'Details'}
                                 </span>
                               </button>
-                              <button
-                                onClick={() =>
-                                  showDeleteConfirmation(event._id)
-                                }
-                                className='text-red-600 hover:text-red-800 flex items-center'
-                              >
-                                <Trash2 size={18} />
-                                <span className='ml-1'>Delete</span>
-                              </button>
+                              {deletingEventId === event._id ? (
+                                <div className='flex items-center text-red-600'>
+                                  <Loader
+                                    className='animate-spin mr-2'
+                                    size={18}
+                                  />
+                                  <span>Deleting...</span>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() =>
+                                    showDeleteConfirmation(event._id)
+                                  }
+                                  className='text-red-600 hover:text-red-800 flex items-center'
+                                >
+                                  <Trash2 size={18} />
+                                  <span className='ml-1'>Delete</span>
+                                </button>
+                              )}
                             </td>
                           </tr>
                           {expandedEventId === event._id && (

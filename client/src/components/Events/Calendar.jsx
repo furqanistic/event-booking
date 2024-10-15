@@ -73,6 +73,10 @@ const Calendar = () => {
         <span>In-Transit</span>
       </div>
       <div className='flex items-center'>
+        <div className='w-4 h-4 bg-yellow-100 mr-2'></div>
+        <span>Event</span>
+      </div>
+      <div className='flex items-center'>
         <div className='w-4 h-4 bg-purple-100 mr-2'></div>
         <span>Cleaning</span>
       </div>
@@ -94,6 +98,9 @@ const Calendar = () => {
           cleaningDays: 0,
         }
 
+        const reachStart = new Date(eventStart)
+        reachStart.setDate(reachStart.getDate() - destinationInfo.daysToReach)
+
         const returnStart = new Date(eventEnd)
         returnStart.setDate(returnStart.getDate() + 1)
         const returnEnd = new Date(returnStart)
@@ -104,7 +111,7 @@ const Calendar = () => {
         const cleaningDay = new Date(returnEnd)
         cleaningDay.setDate(cleaningDay.getDate() + 1)
 
-        return currentDay >= eventStart && currentDay <= cleaningDay
+        return currentDay >= reachStart && currentDay <= cleaningDay
       })
       .map((event) => {
         const eventStart = new Date(event.start)
@@ -114,6 +121,9 @@ const Calendar = () => {
           daysToReturn: 0,
           cleaningDays: 0,
         }
+
+        const reachStart = new Date(eventStart)
+        reachStart.setDate(reachStart.getDate() - destinationInfo.daysToReach)
 
         const returnStart = new Date(eventEnd)
         returnStart.setDate(returnStart.getDate() + 1)
@@ -127,6 +137,7 @@ const Calendar = () => {
 
         return {
           ...event,
+          isReach: currentDay >= reachStart && currentDay < eventStart,
           isStart: eventStart.toDateString() === currentDay.toDateString(),
           isEnd: eventEnd.toDateString() === currentDay.toDateString(),
           isMiddle: eventStart < currentDay && eventEnd > currentDay,
@@ -155,16 +166,26 @@ const Calendar = () => {
     return { events: dayEvents, isDraftDay, isAvailable }
   }
 
-  const EventItem = ({ event, isStart, isEnd, isMiddle, position }) => {
+  const EventItem = ({
+    event,
+    isStart,
+    isEnd,
+    isMiddle,
+    isReach,
+    position,
+  }) => {
     let bgColor = 'bg-blue-100'
     let label = ''
 
-    if (event.isReturn) {
+    if (event.isReach || event.isReturn) {
       bgColor = 'bg-blue-100'
-      label = 'Return'
+      label = 'In-Transit'
     } else if (event.isCleaning) {
       bgColor = 'bg-purple-100'
       label = 'Cleaning'
+    } else {
+      bgColor = 'bg-yellow-100'
+      label = ''
     }
 
     return (
@@ -363,7 +384,8 @@ const Calendar = () => {
                       isStart={event.isStart}
                       isEnd={event.isEnd}
                       isMiddle={event.isMiddle}
-                      position={eventIndex} // Pass the event's position
+                      isReach={event.isReach}
+                      position={eventIndex}
                     />
                   ))}
                 </div>
