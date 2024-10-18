@@ -9,6 +9,7 @@ import {
   ShoppingBag,
   SquareChartGantt,
 } from 'lucide-react'
+import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 const Sidebar = () => {
@@ -26,9 +27,12 @@ const Sidebar = () => {
 
   return (
     <div className='h-screen w-16 md:w-20 flex flex-col items-center bg-white shadow-lg'>
-      <div className='bg-blue-600 w-12 h-12 md:w-16 md:h-16 flex items-center justify-center rounded-full text-white text-xl md:text-2xl font-bold mt-8 mb-8'>
-        <span className='hidden md:inline'>stmn</span>
-        <span className='md:hidden'>st</span>
+      <div className='w-12 h-12 md:w-16 md:h-16 flex items-center justify-center mt-8 mb-8 overflow-hidden rounded-full'>
+        <img
+          src='/logo.webp'
+          alt='Logo'
+          className='w-full h-full object-cover'
+        />
       </div>
       {menuItems.map((item) => (
         <Link to={item.path} key={item.label}>
