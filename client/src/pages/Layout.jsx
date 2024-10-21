@@ -18,7 +18,7 @@ const Sidebar = () => {
     { icon: Home, label: 'Home', path: '/dashboard' },
     { icon: Megaphone, label: 'News', path: '/novedades' },
     { icon: Calendar, label: 'Events', path: '/nuevo-evento' },
-    { icon: Clock, label: 'Appointments', path: '/appointment' },
+    { icon: Clock, label: 'Appointments', path: '/room' },
     { icon: ShoppingBag, label: 'Merch', path: '/merch' },
     { icon: SquareChartGantt, label: 'Manage', path: '/manage' },
     { icon: CalendarCog, label: 'Events', path: '/event-dashboard' },

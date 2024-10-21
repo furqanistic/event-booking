@@ -1,5 +1,4 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import AppointmentPage from './pages/AppointmentPage'
 import EventsManagementPage from './pages/EventsManagementPage'
 import Events from './pages/EventsPage'
 import Home from './pages/Home'
@@ -7,6 +6,7 @@ import InventoryManagementPage from './pages/InventoryManagementPage'
 import LoginPage from './pages/LoginPage'
 import MerchPage from './pages/MerchPage'
 import News from './pages/News'
+import RoomReservationPage from './pages/RoomReservationPage'
 import Setting from './pages/Setting'
 
 const App = () => {
@@ -22,7 +22,7 @@ const App = () => {
             <Route path='novedades' element={<News />} />
             <Route path='merch' element={<MerchPage />} />
             <Route path='mi-cuenta' element={<Setting />} />
-            <Route path='appointment' element={<AppointmentPage />} />
+            <Route path='room' element={<RoomReservationPage />} />
             <Route path='manage' element={<InventoryManagementPage />} />
             <Route path='event-dashboard' element={<EventsManagementPage />} />
           </Route>
