@@ -203,9 +203,10 @@ export const createEvent = async (req, res) => {
       })
     )
 
-    // Create and save the new event
+    // Create and save the new event with creator
     const newEvent = new Event({
       eventType,
+      creator: req.user._id, // Assuming req.user is set by authentication middleware
       start: startDate,
       end: endDate,
       materials,
@@ -224,10 +225,16 @@ export const createEvent = async (req, res) => {
 
     const savedEvent = await newEvent.save()
 
+    // Populate creator information before sending response
+    const populatedEvent = await Event.findById(savedEvent._id).populate(
+      'creator',
+      'name email'
+    )
+
     res.status(201).json({
       status: 'success',
       data: {
-        event: savedEvent,
+        event: populatedEvent,
       },
     })
   } catch (err) {
@@ -242,6 +249,9 @@ export const createEvent = async (req, res) => {
 export const getAllEvents = async (req, res) => {
   try {
     const events = await Event.find()
+      .populate('creator', 'name email')
+      .sort({ createdAt: -1 })
+
     res.status(200).json({
       status: 'success',
       results: events.length,
@@ -259,9 +269,10 @@ export const getAllEvents = async (req, res) => {
 
 export const getEvent = async (req, res) => {
   try {
-    const event = await Event.findById(req.params.id)
-      .populate('creator', 'name email') // Populate creator with name and email
-      .populate('participants', 'name email') // Populate participants with name and email
+    const event = await Event.findById(req.params.id).populate(
+      'creator',
+      'name email'
+    )
 
     if (!event) {
       return res.status(404).json({

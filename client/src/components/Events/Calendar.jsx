@@ -138,11 +138,11 @@ const Calendar = () => {
         return {
           ...event,
           isReach: currentDay >= reachStart && currentDay < eventStart,
-          isStart: eventStart.toDateString() === currentDay.toDateString(),
-          isEnd: eventEnd.toDateString() === currentDay.toDateString(),
-          isMiddle: eventStart < currentDay && eventEnd > currentDay,
+          isEventDay: currentDay >= eventStart && currentDay <= eventEnd,
           isReturn: currentDay > eventEnd && currentDay <= returnEnd,
           isCleaning: currentDay.toDateString() === cleaningDay.toDateString(),
+          isStart: eventStart.toDateString() === currentDay.toDateString(),
+          isEnd: eventEnd.toDateString() === currentDay.toDateString(),
         }
       })
 
@@ -152,29 +152,21 @@ const Calendar = () => {
       event.position = index
     })
 
-    const isDraftDay =
-      draftEvent && draftEvent.start && draftEvent.end
-        ? currentDay >= new Date(draftEvent.start) &&
-          currentDay <= new Date(draftEvent.end)
-        : false
-
-    const isAvailable = checkMaterialAvailability(
-      currentDay,
-      dayEvents.flatMap((event) => event.details?.selectedMaterials || [])
-    )
-
-    return { events: dayEvents, isDraftDay, isAvailable }
+    return {
+      events: dayEvents,
+      isDraftDay:
+        draftEvent?.start && draftEvent?.end
+          ? currentDay >= new Date(draftEvent.start) &&
+            currentDay <= new Date(draftEvent.end)
+          : false,
+      isAvailable: checkMaterialAvailability(
+        currentDay,
+        dayEvents.flatMap((event) => event.details?.selectedMaterials || [])
+      ),
+    }
   }
-
-  const EventItem = ({
-    event,
-    isStart,
-    isEnd,
-    isMiddle,
-    isReach,
-    position,
-  }) => {
-    let bgColor = 'bg-blue-100'
+  const EventItem = ({ event, position }) => {
+    let bgColor = ''
     let label = ''
 
     if (event.isReach || event.isReturn) {
@@ -185,31 +177,48 @@ const Calendar = () => {
       label = 'Cleaning'
     } else {
       bgColor = 'bg-yellow-100'
-      label = ''
+      label = event.title || event.eventType
     }
 
+    const borderLeft = event.isStart || event.isReach ? 'border-l-2' : ''
+    const borderRight = event.isEnd || event.isCleaning ? 'border-r-2' : ''
+    const borderColor = 'border-gray-400'
+    const borders = `border-t border-b ${borderLeft} ${borderRight} ${borderColor}`
+    const opacity =
+      event.isReach || event.isReturn
+        ? 'opacity-70'
+        : event.isCleaning
+        ? 'opacity-80'
+        : ''
+
+    // Increased the base height of each event item and added margin
     return (
       <div
-        className={`h-5 ${bgColor} 
+        className={`h-6 ${bgColor} ${borders} ${opacity}
         cursor-pointer hover:bg-opacity-75 transition-colors duration-200
         text-xs overflow-hidden flex items-center
-        absolute left-0 right-0`}
+        absolute left-0 right-0 group`}
         style={{
           width: 'calc(100% + 2px)',
           marginLeft: '-1px',
           marginRight: '-1px',
-          top: `${position * 22 + 2}px`, // Position events vertically with margin
+          // Increased spacing between events by adjusting the multiplier
+          top: `${position * 34 + 2}px`, // Changed from 22 to 28 for more spacing
         }}
         onClick={() => !event.isDraft && setSelectedEvent(event)}
       >
-        {isStart && (
-          <div className='pl-2 flex flex-col overflow-hidden flex-grow'>
-            <span className='font-semibold whitespace-nowrap overflow-hidden text-ellipsis'>
-              {event.title || event.eventType}
-            </span>
+        <div className='pl-2 flex flex-col overflow-hidden flex-grow relative'>
+          <span className='font-semibold whitespace-nowrap overflow-hidden text-ellipsis'>
+            {label}
+          </span>
+          {/* Tooltip on hover */}
+          <div className='absolute hidden group-hover:block bg-white p-2 rounded shadow-lg z-50 left-0 top-7 w-48 text-xs'>
+            <p className='font-bold'>{event.title || event.eventType}</p>
+            <p>Start: {new Date(event.start).toLocaleDateString()}</p>
+            <p>End: {new Date(event.end).toLocaleDateString()}</p>
+            <p>Destination: {event.destination}</p>
           </div>
-        )}
-        {!isStart && label && <div className='pl-2 text-xs'>{label}</div>}
+        </div>
       </div>
     )
   }
