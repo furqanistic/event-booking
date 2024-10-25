@@ -4,14 +4,16 @@ import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import toast from 'react-hot-toast'
 import { useMutation, useQueryClient } from 'react-query'
+import { useSelector } from 'react-redux'
 import { axiosInstance } from '../../config'
 import { useEventContext } from './EventProvider'
 import MaterialsSection from './MaterialsSection'
 import MerchandisingSection from './MerchandisingSection'
-
 const EventForm = () => {
   const { updateDraftEvent, refreshEvents } = useEventContext()
   const [isLoading, setIsLoading] = useState(false)
+  const { currentUser } = useSelector((state) => state.user)
+
   const [formData, setFormData] = useState({
     eventType: 'Congreso',
     title: '',
@@ -33,6 +35,7 @@ const EventForm = () => {
     assistants: '',
     destination: 'ABANCAY',
     selectedMerchandising: [],
+    creator: '',
   })
   const [formError, setFormError] = useState(null)
 
@@ -174,6 +177,7 @@ const EventForm = () => {
       selectedRoom: '',
       assistants: '',
       selectedMerchandising: [],
+      creator: currentUser.data.user._id,
     })
     setFormError(null)
   }
@@ -312,6 +316,7 @@ const EventForm = () => {
       province: formData.province,
       district: formData.district,
       destination: formData.destination,
+      creator: currentUser.data.user._id,
     }
 
     try {

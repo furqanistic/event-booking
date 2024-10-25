@@ -1,4 +1,16 @@
-import { CalendarIcon, PencilIcon, PlusIcon, TrashIcon } from 'lucide-react'
+import {
+  Calendar,
+  Filter,
+  Gift,
+  ImageIcon,
+  Loader2,
+  Package,
+  Pencil,
+  Plus,
+  Search,
+  Trash,
+  X,
+} from 'lucide-react'
 import React, { useCallback, useState } from 'react'
 import { Toaster, toast } from 'react-hot-toast'
 import { useQuery, useQueryClient } from 'react-query'
@@ -6,15 +18,85 @@ import { axiosInstance } from '../../config'
 import Layout from '../../pages/Layout'
 import BulkUpdateInventory from './BulkUpdateInventory'
 
+const TabButton = ({ active, onClick, children }) => (
+  <button
+    onClick={onClick}
+    className={`
+      px-4 py-2 rounded-lg font-medium transition-all
+      ${
+        active
+          ? 'bg-blue-50 text-blue-600 border border-blue-100'
+          : 'text-gray-600 hover:bg-gray-50'
+      }
+    `}
+  >
+    {children}
+  </button>
+)
+
+const ActionButton = ({ onClick, icon: Icon, label, color }) => (
+  <button
+    onClick={onClick}
+    className={`p-1.5 rounded-lg transition-colors ${color}`}
+    title={label}
+  >
+    <Icon className='w-4 h-4' />
+  </button>
+)
+
+const FormInput = ({ label, id, type = 'text', defaultValue, ...props }) => (
+  <div className='space-y-1.5'>
+    <label htmlFor={id} className='block text-sm font-medium text-gray-700'>
+      {label}
+    </label>
+    <input
+      type={type}
+      id={id}
+      name={id}
+      defaultValue={defaultValue}
+      className='w-full px-3 py-2 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors'
+      {...props}
+    />
+  </div>
+)
+
+const Modal = ({ isOpen, onClose, title, children }) => {
+  if (!isOpen) return null
+
+  return (
+    <div className='fixed inset-0 z-50 overflow-y-auto bg-gray-900/50 backdrop-blur-sm'>
+      <div className='min-h-screen px-4 flex items-center justify-center'>
+        <div className='bg-white w-full max-w-lg rounded-xl shadow-xl'>
+          <div className='flex justify-between items-center px-6 py-4 border-b'>
+            <h3 className='text-lg font-semibold text-gray-900'>{title}</h3>
+            <button
+              onClick={onClose}
+              className='p-1 hover:bg-gray-100 rounded-full transition-colors'
+            >
+              <X className='w-5 h-5 text-gray-500' />
+            </button>
+          </div>
+          {children}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const InventorySection = () => {
   const [activeTab, setActiveTab] = useState('materials')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false)
   const [currentItem, setCurrentItem] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const queryClient = useQueryClient()
 
   const { data: items, isLoading } = useQuery(activeTab, () =>
     axiosInstance.get(activeTab).then((res) => res.data.data.items)
+  )
+
+  const filteredItems = items?.filter((item) =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   const showNotification = useCallback((message, type = 'success') => {
@@ -103,235 +185,211 @@ const InventorySection = () => {
   }, [])
 
   const renderTable = (items) => (
-    <div className='overflow-x-auto'>
-      <table className='min-w-full bg-white'>
-        <thead>
-          <tr className='bg-gray-200 text-gray-600 uppercase text-sm leading-normal'>
-            <th className='py-3 px-6 text-left'>Name</th>
-            <th className='py-3 px-6 text-left'>Image</th>
-            <th className='py-3 px-6 text-left'>Quantity</th>
-            <th className='py-3 px-6 text-center'>Actions</th>
-          </tr>
-        </thead>
-        <tbody className='text-gray-600 text-sm font-light'>
-          {items &&
-            items.map((item) => (
-              <tr
-                key={item._id}
-                className='border-b border-gray-200 hover:bg-gray-100'
-              >
-                <td className='py-3 px-6 text-left whitespace-nowrap'>
-                  {item.name}
+    <div className='overflow-hidden rounded-xl border border-gray-200 bg-white'>
+      <div className='overflow-x-auto'>
+        <table className='min-w-full divide-y divide-gray-200'>
+          <thead>
+            <tr className='bg-gray-50'>
+              <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                Item
+              </th>
+              <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                Image
+              </th>
+              <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                Quantity
+              </th>
+              <th className='px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className='bg-white divide-y divide-gray-200'>
+            {items?.map((item) => (
+              <tr key={item._id} className='hover:bg-gray-50 transition-colors'>
+                <td className='px-6 py-4 whitespace-nowrap'>
+                  <div className='font-medium text-gray-900'>{item.name}</div>
                 </td>
-                <td className='py-3 px-6 text-left'>
-                  {item.imagePath && (
+                <td className='px-6 py-4 whitespace-nowrap'>
+                  {item.imagePath ? (
                     <img
                       src={item.imagePath}
                       alt={item.name}
-                      className='h-10 w-10 rounded-full'
+                      className='h-10 w-10 rounded-lg object-cover'
                     />
+                  ) : (
+                    <div className='h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center'>
+                      <ImageIcon className='w-5 h-5 text-gray-400' />
+                    </div>
                   )}
                 </td>
-                <td className='py-3 px-6 text-left'>{item.MaxQuantity || 0}</td>
-                <td className='py-3 px-6 text-center'>
-                  <div className='flex item-center justify-center'>
-                    <button
+                <td className='px-6 py-4 whitespace-nowrap'>
+                  <div className='text-sm text-gray-900'>
+                    {item.MaxQuantity || 0}
+                  </div>
+                </td>
+                <td className='px-6 py-4 whitespace-nowrap text-center'>
+                  <div className='flex items-center justify-center space-x-2'>
+                    <ActionButton
                       onClick={() => openModal(item)}
-                      className='w-4 mr-2 transform hover:text-purple-500 hover:scale-110'
-                      title='Edit'
-                    >
-                      <PencilIcon size={16} />
-                    </button>
-                    <button
+                      icon={Pencil}
+                      label='Edit'
+                      color='hover:bg-blue-50 hover:text-blue-600'
+                    />
+                    <ActionButton
                       onClick={() => openBulkUpdate(item)}
-                      className='w-4 mr-2 transform hover:text-blue-500 hover:scale-110'
-                      title='Bulk Update Inventory'
-                    >
-                      <CalendarIcon size={16} />
-                    </button>
-                    <button
+                      icon={Calendar}
+                      label='Bulk Update'
+                      color='hover:bg-green-50 hover:text-green-600'
+                    />
+                    <ActionButton
                       onClick={() => handleDelete(item._id)}
-                      className='w-4 mr-2 transform hover:text-red-500 hover:scale-110'
-                      title='Delete'
-                    >
-                      <TrashIcon size={16} />
-                    </button>
+                      icon={Trash}
+                      label='Delete'
+                      color='hover:bg-red-50 hover:text-red-600'
+                    />
                   </div>
                 </td>
               </tr>
             ))}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 
   return (
     <Layout>
-      <div className='container mx-auto px-4 sm:px-8'>
-        <Toaster position='top-right' />
-        <div className='py-8'>
-          <div className='flex justify-between items-center'>
-            <h2 className='text-2xl font-semibold leading-tight'>
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+        <Toaster />
+
+        {/* Header */}
+        <div className='flex justify-between items-center mb-6'>
+          <div>
+            <h1 className='text-2xl font-semibold text-gray-900'>
               Inventory Management
-            </h2>
-            <button
-              onClick={() => openModal()}
-              className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded'
+            </h1>
+            <p className='mt-1 text-sm text-gray-500'>
+              Manage your materials and merchandising items
+            </p>
+          </div>
+          <button
+            onClick={() => openModal()}
+            className='inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
+          >
+            <Plus className='w-5 h-5 mr-2' />
+            Add New Item
+          </button>
+        </div>
+
+        {/* Filters & Search */}
+        <div className='mb-6 flex items-center justify-between'>
+          <div className='flex items-center space-x-2'>
+            <TabButton
+              active={activeTab === 'materials'}
+              onClick={() => setActiveTab('materials')}
             >
-              <PlusIcon className='inline-block mr-2' size={16} />
-              Add New Item
-            </button>
+              <Package className='w-4 h-4 inline-block mr-2' />
+              Materials
+            </TabButton>
+            <TabButton
+              active={activeTab === 'merchandising'}
+              onClick={() => setActiveTab('merchandising')}
+            >
+              <Gift className='w-4 h-4 inline-block mr-2' />
+              Merchandising
+            </TabButton>
           </div>
-          <div className='my-2 flex sm:flex-row flex-col'>
-            <div className='flex flex-row mb-1 sm:mb-0'>
-              <button
-                onClick={() => setActiveTab('materials')}
-                className={`${
-                  activeTab === 'materials'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white text-blue-500'
-                } border border-blue-500 font-bold py-2 px-4 rounded-l`}
-              >
-                Materials
-              </button>
-              <button
-                onClick={() => setActiveTab('merchandising')}
-                className={`${
-                  activeTab === 'merchandising'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white text-blue-500'
-                } border border-blue-500 font-bold py-2 px-4 rounded-r`}
-              >
-                Merchandising
-              </button>
+
+          <div className='flex items-center space-x-4'>
+            <div className='relative'>
+              <Search className='w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2' />
+              <input
+                type='text'
+                placeholder='Search items...'
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className='pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+              />
             </div>
-          </div>
-          <div className='-mx-4 sm:-mx-8 px-4 sm:px-8 py-4 overflow-x-auto'>
-            {isLoading ? <p>Loading...</p> : renderTable(items)}
+            <button className='p-2 hover:bg-gray-100 rounded-lg transition-colors'>
+              <Filter className='w-5 h-5 text-gray-500' />
+            </button>
           </div>
         </div>
 
-        {isModalOpen && (
-          <div className='fixed z-10 inset-0 overflow-y-auto'>
-            <div className='flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0'>
-              <div
-                className='fixed inset-0 transition-opacity'
-                aria-hidden='true'
-              >
-                <div className='absolute inset-0 bg-gray-500 opacity-75'></div>
-              </div>
-              <span
-                className='hidden sm:inline-block sm:align-middle sm:h-screen'
-                aria-hidden='true'
-              >
-                &#8203;
-              </span>
-              <div className='inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full'>
-                <form onSubmit={handleSubmit}>
-                  <div className='bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4'>
-                    <div className='mb-4'>
-                      <label
-                        htmlFor='name'
-                        className='block text-gray-700 text-sm font-bold mb-2'
-                      >
-                        Name
-                      </label>
-                      <input
-                        type='text'
-                        id='name'
-                        name='name'
-                        defaultValue={currentItem?.name}
-                        required
-                        className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
-                      />
-                    </div>
-                    <div className='mb-4'>
-                      <label
-                        htmlFor='imagePath'
-                        className='block text-gray-700 text-sm font-bold mb-2'
-                      >
-                        Image Path
-                      </label>
-                      <input
-                        type='text'
-                        id='imagePath'
-                        name='imagePath'
-                        defaultValue={currentItem?.imagePath}
-                        className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
-                      />
-                    </div>
-                    <div className='mb-4'>
-                      <label
-                        htmlFor='MaxQuantity'
-                        className='block text-gray-700 text-sm font-bold mb-2'
-                      >
-                        Quantity
-                      </label>
-                      <input
-                        type='number'
-                        id='MaxQuantity'
-                        name='MaxQuantity'
-                        defaultValue={currentItem?.MaxQuantity || 0}
-                        min='0'
-                        required
-                        className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
-                      />
-                    </div>
-                    {currentItem && (
-                      <>
-                        <div className='mb-4'>
-                          <label
-                            htmlFor='startDate'
-                            className='block text-gray-700 text-sm font-bold mb-2'
-                          >
-                            Start Date
-                          </label>
-                          <input
-                            type='date'
-                            id='startDate'
-                            name='startDate'
-                            min={new Date().toISOString().split('T')[0]}
-                            className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
-                          />
-                        </div>
-                        <div className='mb-4'>
-                          <label
-                            htmlFor='endDate'
-                            className='block text-gray-700 text-sm font-bold mb-2'
-                          >
-                            End Date
-                          </label>
-                          <input
-                            type='date'
-                            id='endDate'
-                            name='endDate'
-                            min={new Date().toISOString().split('T')[0]}
-                            className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <div className='bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse'>
-                    <button
-                      type='submit'
-                      className='w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm'
-                    >
-                      {currentItem ? 'Update' : 'Create'}
-                    </button>
-                    <button
-                      type='button'
-                      onClick={closeModal}
-                      className='mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm'
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              </div>
+        {/* Content */}
+        <div className='space-y-4'>
+          {isLoading ? (
+            <div className='flex items-center justify-center h-64'>
+              <Loader2 className='w-8 h-8 text-blue-500 animate-spin' />
             </div>
-          </div>
-        )}
+          ) : (
+            renderTable(filteredItems)
+          )}
+        </div>
+
+        {/* Create/Edit Modal */}
+        <Modal
+          isOpen={isModalOpen}
+          onClose={closeModal}
+          title={currentItem ? 'Edit Item' : 'Create New Item'}
+        >
+          <form onSubmit={handleSubmit} className='p-6 space-y-4'>
+            <FormInput
+              label='Name'
+              id='name'
+              defaultValue={currentItem?.name}
+              required
+            />
+            <FormInput
+              label='Image Path'
+              id='imagePath'
+              defaultValue={currentItem?.imagePath}
+            />
+            <FormInput
+              label='Quantity'
+              id='MaxQuantity'
+              type='number'
+              defaultValue={currentItem?.MaxQuantity || 0}
+              min='0'
+              required
+            />
+            {currentItem && (
+              <>
+                <FormInput
+                  label='Start Date'
+                  id='startDate'
+                  type='date'
+                  min={new Date().toISOString().split('T')[0]}
+                />
+                <FormInput
+                  label='End Date'
+                  id='endDate'
+                  type='date'
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </>
+            )}
+            <div className='flex justify-end space-x-3 pt-4'>
+              <button
+                type='button'
+                onClick={closeModal}
+                className='px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors'
+              >
+                Cancel
+              </button>
+              <button
+                type='submit'
+                className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
+              >
+                {currentItem ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Bulk Update Modal */}
         {isBulkUpdateOpen && currentItem && (
           <BulkUpdateInventory
             itemId={currentItem._id}

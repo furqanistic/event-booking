@@ -1,106 +1,120 @@
+import { Info, MapPin, Package, X } from 'lucide-react'
 import React from 'react'
-import { materials, merchandisingItems } from '../../dataFile'
 
 const EventDetails = ({ event, onClose }) => {
   if (!event) return null
-  const details = event || {}
-
-  // Helper function to get merchandising item by id
-  const getMerchandisingItem = (id) => {
-    return merchandisingItems.find((item) => item.id === id)
-  }
-
-  // Helper function to get material item by id
-  const getMaterialItem = (id) => {
-    return materials.find((item) => item.id === id)
-  }
-
-  const DetailSection = ({ title, content }) => (
-    <div className='mb-4'>
-      <p className='text-sm font-medium text-gray-500'>{title}</p>
-      <p className='mt-1'>{content}</p>
-    </div>
-  )
 
   return (
-    <div id='event-details' className='bg-white p-6 rounded-lg shadow-lg'>
-      <h2 className='text-2xl font-bold mb-4'>{details.title}</h2>
-
-      {details.description && (
-        <DetailSection title='Description' content={details.description} />
-      )}
-
-      <div className='grid grid-cols-2 gap-4 mb-4'>
-        <DetailSection
-          title='Start'
-          content={new Date(details.start).toLocaleString()}
-        />
-        <DetailSection
-          title='End'
-          content={new Date(details.end).toLocaleString()}
-        />
+    <div className='flex flex-col h-full bg-white'>
+      {/* Header */}
+      <div className='flex items-center justify-between px-6 py-4 border-b'>
+        <button
+          onClick={onClose}
+          className='p-1 hover:bg-gray-100 rounded-full'
+          aria-label='Close'
+        >
+          <X className='w-5 h-5 text-gray-500' />
+        </button>
       </div>
 
-      {details.eventType && (
-        <DetailSection title='Event Type' content={details.eventType} />
-      )}
+      {/* Content */}
+      <div className='flex-1 overflow-y-auto'>
+        {/* Status & Title */}
+        <div className='px-6 py-4'>
+          <span className='inline-block px-3 py-1 text-sm text-purple-700 bg-purple-50 rounded-full'>
+            Upcoming
+          </span>
+          <h2 className='mt-2 text-2xl text-gray-900'>{event.title}</h2>
+        </div>
 
-      {details.materials &&
-        details.selectedMaterials &&
-        details.selectedMaterials.length > 0 && (
-          <div className='mb-4'>
-            <p className='text-sm font-medium text-gray-500'>Materials</p>
-            <ul className='list-disc pl-5 mt-1'>
-              {details.selectedMaterials.map((item, index) => {
-                const material = getMaterialItem(item.id)
-                return (
-                  <li key={index}>
-                    {item.name} (Quantity: {item.quantity})
-                  </li>
-                )
-              })}
-            </ul>
+        {/* Time Section */}
+        <div className='px-6 space-y-6'>
+          <div className='grid grid-cols-2 gap-4'>
+            <div className='bg-gray-50 p-4 rounded-lg'>
+              <div className='text-indigo-600 mb-1'>Start Time</div>
+              <div>{event.start}</div>
+            </div>
+            <div className='bg-gray-50 p-4 rounded-lg'>
+              <div className='text-indigo-600 mb-1'>End Time</div>
+              <div>{event.end}</div>
+            </div>
           </div>
-        )}
 
-      {details.trainer && <DetailSection title='Trainer' content='Yes' />}
+          {/* Description */}
+          {event.description && (
+            <div className='flex gap-3'>
+              <Info className='w-5 h-5 text-gray-400 flex-shrink-0 mt-1' />
+              <div>
+                <div className='text-gray-600 mb-1'>Description</div>
+                <div className='text-gray-900'>{event.description}</div>
+              </div>
+            </div>
+          )}
 
-      {details.merchandising &&
-        details.selectedMerchandising &&
-        details.selectedMerchandising.length > 0 && (
-          <div className='mb-4'>
-            <p className='text-sm font-medium text-gray-500'>Merchandising</p>
-            <ul className='list-disc pl-5 mt-1'>
-              {details.selectedMerchandising.map((item, index) => {
-                const merchandisingItem = getMerchandisingItem(item.id)
-                return (
-                  <li key={index}>
-                    {item.name} (Quantity: {item.quantity})
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        )}
+          {/* Event Type */}
+          {event.eventType && (
+            <div className='flex gap-3'>
+              <Info className='w-5 h-5 text-gray-400 flex-shrink-0 mt-1' />
+              <div>
+                <div className='text-gray-600 mb-1'>Event Type</div>
+                <span className='inline-block px-3 py-1 bg-purple-50 text-purple-700 rounded-full'>
+                  {event.eventType}
+                </span>
+              </div>
+            </div>
+          )}
 
-      {details.address && (
-        <DetailSection title='Address' content={details.address} />
-      )}
+          {/* Materials */}
+          {event.selectedMaterials?.length > 0 && (
+            <div className='flex gap-3'>
+              <Package className='w-5 h-5 text-gray-400 flex-shrink-0 mt-1' />
+              <div className='flex-1'>
+                <div className='text-gray-600 mb-1'>Materials</div>
+                {event.selectedMaterials.map((item, index) => (
+                  <div
+                    key={item.id || index}
+                    className='flex justify-between items-center py-2'
+                  >
+                    <span>{item.name}</span>
+                    <span className='text-indigo-600'>
+                      Qty: {item.quantity}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-      {details.reference && (
-        <DetailSection title='Reference' content={details.reference} />
-      )}
+          {/* Location */}
+          {(event.address || event.department) && (
+            <div className='flex gap-3'>
+              <MapPin className='w-5 h-5 text-gray-400 flex-shrink-0 mt-1' />
+              <div>
+                <div className='text-gray-600 mb-1'>Location Details</div>
+                {event.address && (
+                  <div className='text-gray-900'>{event.address}</div>
+                )}
+                {event.department && (
+                  <div className='text-gray-600 mt-1'>
+                    {event.department} {event.province && `• ${event.province}`}{' '}
+                    {event.district && `• ${event.district}`}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
-      {details.destination && (
-        <DetailSection title='Destination' content={details.destination} />
-      )}
-
-      {details.department && details.province && details.district && (
-        <DetailSection
-          title='Location'
-          content={`Department: ${details.department}, Province: ${details.province}, District: ${details.district}`}
-        />
-      )}
+      {/* Footer */}
+      <div className='px-6 py-4 border-t'>
+        <button
+          className='w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors'
+          onClick={() => window.print()} // Or your PDF save logic
+        >
+          Save as PDF
+        </button>
+      </div>
     </div>
   )
 }
