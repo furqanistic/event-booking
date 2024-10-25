@@ -8,14 +8,12 @@ const rooms = [
     id: 1,
     name: 'Room A',
     capacity: 3,
-    equipment: ['Projector', 'Whiteboard'],
     availability: [9, 10, 11, 13, 14, 15],
   },
   {
     id: 2,
     name: 'Room B',
     capacity: 5,
-    equipment: ['TV Screen', 'Conference Phone'],
     availability: [10, 11, 12, 14, 15, 16],
   },
 ]
@@ -166,201 +164,296 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
 
   return (
     <Layout>
-      <div className='max-w-2xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-xl'>
-        <h2 className='text-3xl font-bold mb-6 text-center text-gray-800'>
-          Room Reservation
-        </h2>
-
-        <div className='mb-4'>
-          <label
-            className='block text-gray-700 text-sm font-bold mb-2'
-            htmlFor='date'
-          >
-            Select Date
-          </label>
-          <input
-            type='date'
-            id='date'
-            className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500'
-            value={selectedDate.toISOString().split('T')[0]}
-            onChange={(e) => setSelectedDate(new Date(e.target.value))}
-          />
-        </div>
-
-        <div className='mb-4'>
-          <label
-            className='block text-gray-700 text-sm font-bold mb-2'
-            htmlFor='room'
-          >
-            Select Room
-          </label>
-          <div className='relative'>
-            <select
-              id='room'
-              className='block appearance-none w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500'
-              onChange={(e) => setSelectedRoom(Number(e.target.value))}
-              value={selectedRoom || ''}
-            >
-              <option value=''>Choose a room</option>
-              {rooms.map((room) => (
-                <option key={room.id} value={room.id}>
-                  {room.name} (Capacity: {room.capacity})
-                </option>
-              ))}
-            </select>
-            <div className='pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700'>
-              <ChevronDown size={20} />
-            </div>
+      <div className='min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8'>
+        <div className='max-w-4xl mx-auto'>
+          <div className='text-center mb-8'>
+            <h2 className='text-3xl font-bold text-gray-900 mb-2'>
+              Room Reservation
+            </h2>
+            <p className='text-gray-600'>
+              Schedule a room for your next meeting or event
+            </p>
           </div>
-          {selectedRoom && (
-            <div className='mt-2 text-sm text-gray-600'>
-              Equipment:{' '}
-              {rooms.find((r) => r.id === selectedRoom).equipment.join(', ')}
-            </div>
-          )}
-        </div>
 
-        {availableTimes.length > 0 && (
-          <div className='mb-6'>
-            <label className='block text-gray-700 text-sm font-bold mb-2'>
-              Available Times
-            </label>
-            <div className='grid grid-cols-4 gap-2'>
-              {availableTimes.map((time) => (
+          <div className='bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden'>
+            {/* Progress Steps */}
+            <div className='bg-gray-50 px-6 py-4 border-b border-gray-200'>
+              <div className='flex items-center justify-between max-w-2xl mx-auto'>
+                <div className='flex flex-col items-center'>
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      selectedDate
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-200 text-gray-600'
+                    }`}
+                  >
+                    1
+                  </div>
+                  <span className='text-xs mt-1 font-medium text-gray-600'>
+                    Date
+                  </span>
+                </div>
+                <div
+                  className={`h-1 flex-1 mx-2 ${
+                    selectedRoom ? 'bg-indigo-600' : 'bg-gray-200'
+                  }`}
+                />
+                <div className='flex flex-col items-center'>
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      selectedRoom
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-200 text-gray-600'
+                    }`}
+                  >
+                    2
+                  </div>
+                  <span className='text-xs mt-1 font-medium text-gray-600'>
+                    Room
+                  </span>
+                </div>
+                <div
+                  className={`h-1 flex-1 mx-2 ${
+                    selectedTime ? 'bg-indigo-600' : 'bg-gray-200'
+                  }`}
+                />
+                <div className='flex flex-col items-center'>
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      selectedTime
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-200 text-gray-600'
+                    }`}
+                  >
+                    3
+                  </div>
+                  <span className='text-xs mt-1 font-medium text-gray-600'>
+                    Details
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className='p-6'>
+              <div className='max-w-2xl mx-auto space-y-8'>
+                {/* Date Selection */}
+                <div className='space-y-4'>
+                  <label
+                    className='block text-sm font-semibold text-gray-700'
+                    htmlFor='date'
+                  >
+                    Select Date
+                  </label>
+                  <input
+                    type='date'
+                    id='date'
+                    className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
+                    value={selectedDate.toISOString().split('T')[0]}
+                    onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+
+                {/* Room Selection */}
+                <div className='space-y-4'>
+                  <label
+                    className='block text-sm font-semibold text-gray-700'
+                    htmlFor='room'
+                  >
+                    Select Room
+                  </label>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                    {rooms.map((room) => (
+                      <div
+                        key={room.id}
+                        onClick={() => setSelectedRoom(room.id)}
+                        className={`cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 ${
+                          selectedRoom === room.id
+                            ? 'border-indigo-500 bg-indigo-50'
+                            : 'border-gray-200 hover:border-indigo-200'
+                        }`}
+                      >
+                        <div className='flex justify-between items-start mb-2'>
+                          <h3 className='font-semibold text-gray-900'>
+                            {room.name}
+                          </h3>
+                          <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800'>
+                            Capacity: {room.capacity}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Time Selection */}
+                {availableTimes.length > 0 && (
+                  <div className='space-y-4'>
+                    <label className='block text-sm font-semibold text-gray-700'>
+                      Available Times
+                    </label>
+                    <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
+                      {availableTimes.map((time) => (
+                        <button
+                          key={time}
+                          className={`py-3 px-4 rounded-xl text-sm font-medium transition-all duration-200 ${
+                            selectedTime === time
+                              ? 'bg-indigo-600 text-white shadow-md'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                          onClick={() => setSelectedTime(time)}
+                        >
+                          {time}:00
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Reservation Details */}
+                <div className='space-y-6'>
+                  <div>
+                    <label
+                      className='block text-sm font-semibold text-gray-700 mb-2'
+                      htmlFor='title'
+                    >
+                      Reservation Title
+                    </label>
+                    <input
+                      type='text'
+                      id='title'
+                      className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
+                      value={reservationTitle}
+                      onChange={(e) => setReservationTitle(e.target.value)}
+                      placeholder='e.g., Team Meeting, Training Session'
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      className='block text-sm font-semibold text-gray-700 mb-2'
+                      htmlFor='doctor'
+                    >
+                      Request Doctor (Optional)
+                    </label>
+                    <select
+                      id='doctor'
+                      className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 appearance-none'
+                      onChange={(e) =>
+                        setSelectedDoctor(
+                          e.target.value ? Number(e.target.value) : null
+                        )
+                      }
+                      value={selectedDoctor || ''}
+                    >
+                      <option value=''>No doctor needed</option>
+                      <option value={assignedDoctor.id}>
+                        {assignedDoctor.name} - {assignedDoctor.specialty}
+                      </option>
+                    </select>
+                  </div>
+
+                  {/* Attendees */}
+                  <div className='space-y-4'>
+                    <label className='block text-sm font-semibold text-gray-700'>
+                      Attendees
+                    </label>
+                    <div className='space-y-3'>
+                      {attendees.map((attendee, index) => (
+                        <div
+                          key={index}
+                          className='flex items-center justify-between bg-gray-50 p-3 rounded-xl'
+                        >
+                          <div className='flex items-center space-x-3'>
+                            <div className='h-8 w-8 bg-indigo-100 rounded-full flex items-center justify-center'>
+                              <span className='text-indigo-600 font-medium'>
+                                {attendee.name.charAt(0)}
+                              </span>
+                            </div>
+                            <div>
+                              <p className='font-medium text-gray-900'>
+                                {attendee.name}
+                              </p>
+                              <p className='text-sm text-gray-500'>
+                                ID: {attendee.id}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => removeAttendee(index)}
+                            className='text-gray-400 hover:text-red-500 transition-colors duration-200'
+                          >
+                            <X size={20} />
+                          </button>
+                        </div>
+                      ))}
+
+                      <div className='flex gap-3'>
+                        <input
+                          type='text'
+                          placeholder='Attendee Name'
+                          className='flex-grow bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
+                          value={newAttendee.name}
+                          onChange={(e) =>
+                            setNewAttendee({
+                              ...newAttendee,
+                              name: e.target.value,
+                            })
+                          }
+                        />
+                        <input
+                          type='text'
+                          placeholder='ID Number'
+                          className='w-32 sm:w-40 bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
+                          value={newAttendee.id}
+                          onChange={(e) =>
+                            setNewAttendee({
+                              ...newAttendee,
+                              id: e.target.value,
+                            })
+                          }
+                        />
+                        <button
+                          onClick={handleAddAttendee}
+                          className='bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-4 rounded-xl transition-colors duration-200 flex items-center justify-center'
+                        >
+                          <Plus size={20} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {bookingError && (
+                  <div className='rounded-xl bg-red-50 p-4 text-red-800'>
+                    <h3 className='font-semibold mb-1'>Error</h3>
+                    <p className='text-sm'>{bookingError}</p>
+                  </div>
+                )}
+
                 <button
-                  key={time}
-                  className={`py-2 px-4 rounded ${
-                    selectedTime === time
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-200 text-gray-800'
-                  } hover:bg-blue-400 transition duration-300`}
-                  onClick={() => setSelectedTime(time)}
+                  className='w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 px-6 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed'
+                  onClick={handleBooking}
+                  disabled={
+                    !selectedRoom ||
+                    !selectedTime ||
+                    !reservationTitle ||
+                    attendees.length === 0
+                  }
                 >
-                  {time}:00
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className='mb-4'>
-          <label
-            className='block text-gray-700 text-sm font-bold mb-2'
-            htmlFor='title'
-          >
-            Reservation Title
-          </label>
-          <input
-            type='text'
-            id='title'
-            className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500'
-            value={reservationTitle}
-            onChange={(e) => setReservationTitle(e.target.value)}
-            placeholder='e.g., Training Session, Team Meeting'
-          />
-        </div>
-
-        <div className='mb-4'>
-          <label
-            className='block text-gray-700 text-sm font-bold mb-2'
-            htmlFor='doctor'
-          >
-            Request Doctor (Optional)
-          </label>
-          <div className='relative'>
-            <select
-              id='doctor'
-              className='block appearance-none w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500'
-              onChange={(e) =>
-                setSelectedDoctor(
-                  e.target.value ? Number(e.target.value) : null
-                )
-              }
-              value={selectedDoctor || ''}
-            >
-              <option value=''>No doctor needed</option>
-              <option value={assignedDoctor.id}>
-                {assignedDoctor.name} - {assignedDoctor.specialty}
-              </option>
-            </select>
-            <div className='pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700'>
-              <ChevronDown size={20} />
-            </div>
-          </div>
-        </div>
-
-        <div className='mb-6'>
-          <label className='block text-gray-700 text-sm font-bold mb-2'>
-            Attendees
-          </label>
-          <div className='space-y-2'>
-            {attendees.map((attendee, index) => (
-              <div
-                key={index}
-                className='flex items-center space-x-2 bg-gray-50 p-2 rounded'
-              >
-                <span className='flex-grow'>
-                  {attendee.name} (ID: {attendee.id})
-                </span>
-                <button
-                  onClick={() => removeAttendee(index)}
-                  className='text-red-500 hover:text-red-700'
-                >
-                  <X size={20} />
+                  <Calendar size={20} />
+                  <span>Complete Reservation</span>
                 </button>
               </div>
-            ))}
-          </div>
-          <div className='mt-2 flex space-x-2'>
-            <input
-              type='text'
-              placeholder='Attendee Name'
-              className='flex-grow bg-white border border-gray-300 text-gray-700 py-2 px-3 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500'
-              value={newAttendee.name}
-              onChange={(e) =>
-                setNewAttendee({ ...newAttendee, name: e.target.value })
-              }
-            />
-            <input
-              type='text'
-              placeholder='ID Number'
-              className='w-32 bg-white border border-gray-300 text-gray-700 py-2 px-3 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500'
-              value={newAttendee.id}
-              onChange={(e) =>
-                setNewAttendee({ ...newAttendee, id: e.target.value })
-              }
-            />
-            <button
-              onClick={handleAddAttendee}
-              className='bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded'
-            >
-              <Plus size={20} />
-            </button>
+            </div>
           </div>
         </div>
-
-        {bookingError && (
-          <Alert variant='destructive'>
-            <h3 className='font-bold'>Error</h3>
-            <p>{bookingError}</p>
-          </Alert>
-        )}
-
-        <button
-          className='w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline flex items-center justify-center'
-          onClick={handleBooking}
-        >
-          <Calendar className='mr-2' size={20} />
-          Reserve Room
-        </button>
 
         <AlertDialog
           isOpen={showConfirmDialog}
           onClose={() => setShowConfirmDialog(false)}
           title='Confirm Reservation'
           description={`
-          Are you sure you want to make this reservation?
-          
           Room: ${
             selectedRoom ? rooms.find((r) => r.id === selectedRoom).name : ''
           }
