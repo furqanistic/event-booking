@@ -160,6 +160,7 @@ export const createEvent = async (req, res) => {
       selectedMerchandising,
       title,
       description,
+      creator,
     } = req.body
 
     // Validate required fields
@@ -206,7 +207,7 @@ export const createEvent = async (req, res) => {
     // Create and save the new event with creator
     const newEvent = new Event({
       eventType,
-      creator: req.user._id, // Assuming req.user is set by authentication middleware
+      creator, // Assuming req.user is set by authentication middleware
       start: startDate,
       end: endDate,
       materials,

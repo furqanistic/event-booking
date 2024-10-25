@@ -95,6 +95,11 @@ const EventSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    creator: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    }, //for who created
   },
   { timestamps: true }
 )
