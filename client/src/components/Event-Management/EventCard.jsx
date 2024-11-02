@@ -15,7 +15,57 @@ import {
   User,
   User2,
 } from 'lucide-react'
-import React from 'react'
+
+// Import destination data at the top of both files
+import { destinationData } from '../../dataFile'
+
+const getEventStatus = (start, end, destination) => {
+  const now = new Date()
+  const startDate = new Date(start)
+  const endDate = new Date(end)
+
+  // Get destination data
+  const destData = destinationData[destination?.toUpperCase()] || {
+    daysToReach: 1,
+    daysToReturn: 1,
+    cleaningDays: 1,
+  }
+
+  // Calculate transit dates
+  const transitStartDate = new Date(startDate)
+  transitStartDate.setDate(startDate.getDate() - destData.daysToReach)
+
+  const transitEndDate = new Date(endDate)
+  transitEndDate.setDate(endDate.getDate() + destData.daysToReturn)
+
+  // Calculate cleaning period
+  const cleaningStartDate = new Date(transitEndDate)
+  const cleaningEndDate = new Date(transitEndDate)
+  cleaningEndDate.setDate(cleaningEndDate.getDate() + destData.cleaningDays)
+
+  // Determine status based on current date
+  if (now < transitStartDate) {
+    return { label: 'Upcoming', color: 'bg-purple-500' }
+  }
+
+  if (now >= transitStartDate && now < startDate) {
+    return { label: 'In-Transit', color: 'bg-yellow-500' }
+  }
+
+  if (now >= startDate && now <= endDate) {
+    return { label: 'Happening', color: 'bg-green-500' }
+  }
+
+  if (now > endDate && now <= transitEndDate) {
+    return { label: 'In-Transit', color: 'bg-yellow-500' }
+  }
+
+  if (now > transitEndDate && now <= cleaningEndDate) {
+    return { label: 'Cleaning', color: 'bg-blue-500' }
+  }
+
+  return { label: 'Completed', color: 'bg-gray-500' }
+}
 
 const DetailSection = ({ icon: Icon, title, content }) => (
   <div className='flex items-center space-x-2 text-sm mb-3'>
@@ -32,9 +82,11 @@ const EventCard = ({
   onDeleteClick,
   deletingEventId,
 }) => {
+  const status = getEventStatus(event.start, event.end, event.destination)
+
   return (
     <div className='bg-white rounded-lg shadow-sm border border-gray-100 mb-4 overflow-hidden transition-all duration-200 hover:shadow-md'>
-      <div className='grid grid-cols-5 p-4 items-center'>
+      <div className='grid grid-cols-6 p-4 items-center'>
         <div className='flex items-center space-x-3'>
           <div className='p-2 bg-indigo-50 rounded-lg'>
             <Calendar className='text-indigo-600' size={20} />
@@ -60,9 +112,17 @@ const EventCard = ({
           </span>
         </div>
 
+        <div className='flex items-center'>
+          <span
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status.color} text-white`}
+          >
+            {status.label}
+          </span>
+        </div>
+
         <div className='flex items-center space-x-2'>
           <User className='text-gray-400' size={16} />
-          <span className='text-sm'>{event.createdBy || 'System'}</span>
+          <span className='text-sm'>{event.creator?.name || 'System'}</span>
         </div>
 
         <div className='flex items-center justify-end space-x-4'>

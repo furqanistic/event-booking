@@ -2,13 +2,66 @@ import {
   Calendar,
   CalendarIcon,
   ChevronRight,
+  Loader,
   MapPin,
   Plus,
   Search,
+  Trash2,
   User,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { destinationData } from '../../dataFile'
 import EventCard from './EventCard'
+
+// Import destination data at the top of both files
+
+const getEventStatus = (start, end, destination) => {
+  const now = new Date()
+  const startDate = new Date(start)
+  const endDate = new Date(end)
+
+  // Get destination data
+  const destData = destinationData[destination?.toUpperCase()] || {
+    daysToReach: 1,
+    daysToReturn: 1,
+    cleaningDays: 1,
+  }
+
+  // Calculate transit dates
+  const transitStartDate = new Date(startDate)
+  transitStartDate.setDate(startDate.getDate() - destData.daysToReach)
+
+  const transitEndDate = new Date(endDate)
+  transitEndDate.setDate(endDate.getDate() + destData.daysToReturn)
+
+  // Calculate cleaning period
+  const cleaningStartDate = new Date(transitEndDate)
+  const cleaningEndDate = new Date(transitEndDate)
+  cleaningEndDate.setDate(cleaningEndDate.getDate() + destData.cleaningDays)
+
+  // Determine status based on current date
+  if (now < transitStartDate) {
+    return { label: 'Upcoming', color: 'bg-purple-500' }
+  }
+
+  if (now >= transitStartDate && now < startDate) {
+    return { label: 'In-Transit', color: 'bg-yellow-500' }
+  }
+
+  if (now >= startDate && now <= endDate) {
+    return { label: 'Happening', color: 'bg-green-500' }
+  }
+
+  if (now > endDate && now <= transitEndDate) {
+    return { label: 'In-Transit', color: 'bg-yellow-500' }
+  }
+
+  if (now > transitEndDate && now <= cleaningEndDate) {
+    return { label: 'Cleaning', color: 'bg-blue-500' }
+  }
+
+  return { label: 'Completed', color: 'bg-gray-500' }
+}
 
 const SearchBar = ({ onSearch }) => (
   <div className='relative w-full md:w-96 mb-6'>
@@ -26,7 +79,7 @@ const SearchBar = ({ onSearch }) => (
 )
 
 const ColumnHeader = () => (
-  <div className='hidden lg:grid lg:grid-cols-5 p-4 bg-white rounded-xl shadow-sm mb-4 backdrop-blur-sm bg-white/50'>
+  <div className='hidden lg:grid lg:grid-cols-6 p-4 bg-white rounded-xl shadow-sm mb-4 backdrop-blur-sm bg-white/50'>
     <div className='flex items-center space-x-2'>
       <div className='text-sm font-semibold text-gray-700'>Event Details</div>
     </div>
@@ -37,6 +90,9 @@ const ColumnHeader = () => (
     <div className='flex items-center space-x-2'>
       <MapPin className='text-indigo-500' size={16} />
       <div className='text-sm font-semibold text-gray-700'>Location</div>
+    </div>
+    <div className='flex items-center space-x-2'>
+      <div className='text-sm font-semibold text-gray-700'>Status</div>
     </div>
     <div className='flex items-center space-x-2'>
       <User className='text-indigo-500' size={16} />
@@ -72,20 +128,12 @@ const MobileEventCard = ({
   deletingEventId,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false)
+  // In MobileEventCard.js
+  const status = getEventStatus(event.start, event.end, event.destination)
 
   const handleToggle = () => {
     setIsExpanded(!isExpanded)
     onToggleDetails(event._id)
-  }
-
-  const getStatusColor = () => {
-    const now = new Date()
-    const startDate = new Date(event.start)
-    const endDate = new Date(event.end)
-
-    if (now < startDate) return 'bg-yellow-400' // Upcoming
-    if (now > endDate) return 'bg-gray-400' // Past
-    return 'bg-green-400' // Active
   }
 
   return (
@@ -100,15 +148,19 @@ const MobileEventCard = ({
               <div className='p-2.5 bg-indigo-50 rounded-xl'>
                 <Calendar className='text-indigo-600' size={20} />
               </div>
-              <div
-                className={`absolute -top-1 -right-1 w-3 h-3 ${getStatusColor()} rounded-full border-2 border-white`}
-              ></div>
             </div>
             <div>
               <h3 className='font-semibold text-gray-900'>{event.title}</h3>
-              <span className='inline-block px-2 py-1 mt-1 text-xs font-medium bg-indigo-50 text-indigo-600 rounded-full'>
-                {event.eventType}
-              </span>
+              <div className='flex items-center space-x-2 mt-1'>
+                <span className='inline-block px-2 py-1 text-xs font-medium bg-indigo-50 text-indigo-600 rounded-full'>
+                  {event.eventType}
+                </span>
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status.color} text-white`}
+                >
+                  {status.label}
+                </span>
+              </div>
             </div>
           </div>
           <ChevronRight
@@ -166,7 +218,10 @@ const MobileEventCard = ({
                   <span>Deleting...</span>
                 </>
               ) : (
-                'Delete Event'
+                <>
+                  <Trash2 size={16} />
+                  <span>Delete Event</span>
+                </>
               )}
             </button>
           </div>
@@ -204,6 +259,9 @@ const EventList = ({
         new Date(event.end)
           .toLocaleDateString()
           .toLowerCase()
+          .includes(searchLower) ||
+        getEventStatus(event.start, event.end, event.destination)
+          .label.toLowerCase()
           .includes(searchLower)
       )
     })

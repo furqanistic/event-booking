@@ -1,8 +1,13 @@
 import { EyeIcon, EyeOffIcon } from 'lucide-react'
 import { useState } from 'react'
+import { useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { axiosInstance } from '../config'
+import { loginFailure, loginStart, loginSuccess } from '../redux/userSlice'
+
 const LoginPage = () => {
+  const dispatch = useDispatch()
+
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
@@ -21,6 +26,8 @@ const LoginPage = () => {
   }
 
   const handleSubmit = async (e) => {
+    dispatch(loginStart())
+
     e.preventDefault()
     setError('')
 
@@ -32,13 +39,15 @@ const LoginPage = () => {
 
       if (response.data.status === 'success') {
         // Store the token in localStorage or a secure cookie
-        localStorage.setItem('token', response.data.token)
+        dispatch(loginSuccess(response.data))
+
         navigate('/dashboard')
       }
     } catch (err) {
       setError(
         err.response?.data?.message || 'An error occurred. Please try again.'
       )
+      dispatch(loginFailure(err.response?.data?.message))
     }
   }
 

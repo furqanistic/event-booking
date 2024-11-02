@@ -36,6 +36,7 @@ const EventsManagementPage = () => {
     refetchOnWindowFocus: false,
     enabled: false,
   })
+
   useEffect(() => {
     refetch()
   }, [refetch])

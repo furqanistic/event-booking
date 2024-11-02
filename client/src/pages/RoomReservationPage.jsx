@@ -2,18 +2,22 @@ import { Calendar, ChevronDown, Plus, X } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 import Layout from './Layout'
 
-// Mock data for rooms and doctors
+// Enhanced mock data for rooms with sections
 const rooms = [
   {
     id: 1,
     name: 'Room A',
-    capacity: 3,
+    totalCapacity: 15,
+    sections: 3,
+    sectionCapacity: 5,
     availability: [9, 10, 11, 13, 14, 15],
   },
   {
     id: 2,
     name: 'Room B',
-    capacity: 5,
+    totalCapacity: 5,
+    sections: 1,
+    sectionCapacity: 5,
     availability: [10, 11, 12, 14, 15, 16],
   },
 ]
@@ -79,16 +83,27 @@ const AlertDialog = ({ isOpen, onClose, title, description, onConfirm }) => {
 }
 
 const RoomReservationPage = ({ userBrand = 'nuo' }) => {
+  const [numberOfAttendees, setNumberOfAttendees] = useState('')
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedRoom, setSelectedRoom] = useState(null)
+  const [selectedSections, setSelectedSections] = useState(1)
   const [selectedTime, setSelectedTime] = useState(null)
   const [availableTimes, setAvailableTimes] = useState([])
   const [reservationTitle, setReservationTitle] = useState('')
   const [selectedDoctor, setSelectedDoctor] = useState(null)
-  const [attendees, setAttendees] = useState([])
-  const [newAttendee, setNewAttendee] = useState({ name: '', id: '' })
+  const [attendeeList, setAttendeeList] = useState('')
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [bookingError, setBookingError] = useState(null)
+
+  // Filter available rooms based on number of attendees
+  const availableRooms = rooms.filter((room) => {
+    const requiredAttendees = parseInt(numberOfAttendees)
+    if (!requiredAttendees) return true
+    return (
+      room.sectionCapacity >= requiredAttendees ||
+      room.totalCapacity >= requiredAttendees
+    )
+  })
 
   // Get the assigned doctor based on the user's brand
   const assignedDoctor = doctors.find(
@@ -114,39 +129,49 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
     }
   }, [selectedRoom, selectedDoctor])
 
-  const handleAddAttendee = () => {
-    if (newAttendee.name && newAttendee.id) {
-      setAttendees([...attendees, newAttendee])
-      setNewAttendee({ name: '', id: '' })
-    }
+  const handleAttendeesInput = (input) => {
+    setAttendeeList(input)
   }
 
-  const removeAttendee = (index) => {
-    setAttendees(attendees.filter((_, i) => i !== index))
+  const parseAttendees = () => {
+    if (!attendeeList) return []
+    return attendeeList
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => {
+        const [name, id] = line.split(/[,\t]/).map((item) => item.trim())
+        return { name: name || '', id: id || '' }
+      })
   }
 
   const handleBooking = () => {
+    const attendees = parseAttendees()
     if (
       selectedRoom &&
       selectedTime &&
       reservationTitle &&
-      attendees.length > 0
+      attendees.length > 0 &&
+      numberOfAttendees &&
+      attendees.length === parseInt(numberOfAttendees)
     ) {
       setShowConfirmDialog(true)
     } else {
       setBookingError(
-        'Please fill in all required fields and add at least one attendee.'
+        'Please fill in all required fields and ensure the number of attendees matches the entered list.'
       )
     }
   }
 
   const confirmBooking = () => {
-    // Here you would typically send this data to your backend
+    const attendees = parseAttendees()
     console.log('Reservation confirmed:', {
       room: rooms.find((r) => r.id === selectedRoom).name,
+      sections: selectedSections,
       date: selectedDate.toDateString(),
       time: `${selectedTime}:00`,
       title: reservationTitle,
+      numberOfAttendees,
       doctor: selectedDoctor
         ? doctors.find((d) => d.id === selectedDoctor).name
         : 'None',
@@ -158,7 +183,8 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
     setSelectedTime(null)
     setReservationTitle('')
     setSelectedDoctor(null)
-    setAttendees([])
+    setAttendeeList('')
+    setNumberOfAttendees('')
     setShowConfirmDialog(false)
   }
 
@@ -176,66 +202,27 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
           </div>
 
           <div className='bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden'>
-            {/* Progress Steps */}
-            <div className='bg-gray-50 px-6 py-4 border-b border-gray-200'>
-              <div className='flex items-center justify-between max-w-2xl mx-auto'>
-                <div className='flex flex-col items-center'>
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      selectedDate
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-gray-200 text-gray-600'
-                    }`}
-                  >
-                    1
-                  </div>
-                  <span className='text-xs mt-1 font-medium text-gray-600'>
-                    Date
-                  </span>
-                </div>
-                <div
-                  className={`h-1 flex-1 mx-2 ${
-                    selectedRoom ? 'bg-indigo-600' : 'bg-gray-200'
-                  }`}
-                />
-                <div className='flex flex-col items-center'>
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      selectedRoom
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-gray-200 text-gray-600'
-                    }`}
-                  >
-                    2
-                  </div>
-                  <span className='text-xs mt-1 font-medium text-gray-600'>
-                    Room
-                  </span>
-                </div>
-                <div
-                  className={`h-1 flex-1 mx-2 ${
-                    selectedTime ? 'bg-indigo-600' : 'bg-gray-200'
-                  }`}
-                />
-                <div className='flex flex-col items-center'>
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      selectedTime
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-gray-200 text-gray-600'
-                    }`}
-                  >
-                    3
-                  </div>
-                  <span className='text-xs mt-1 font-medium text-gray-600'>
-                    Details
-                  </span>
-                </div>
-              </div>
-            </div>
-
             <div className='p-6'>
               <div className='max-w-2xl mx-auto space-y-8'>
+                {/* Number of Attendees */}
+                <div className='space-y-4'>
+                  <label
+                    className='block text-sm font-semibold text-gray-700'
+                    htmlFor='attendees'
+                  >
+                    Number of Attendees
+                  </label>
+                  <input
+                    type='number'
+                    id='attendees'
+                    min='1'
+                    className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
+                    value={numberOfAttendees}
+                    onChange={(e) => setNumberOfAttendees(e.target.value)}
+                    placeholder='Enter number of attendees'
+                  />
+                </div>
+
                 {/* Date Selection */}
                 <div className='space-y-4'>
                   <label
@@ -263,7 +250,7 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
                     Select Room
                   </label>
                   <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-                    {rooms.map((room) => (
+                    {availableRooms.map((room) => (
                       <div
                         key={room.id}
                         onClick={() => setSelectedRoom(room.id)}
@@ -278,13 +265,45 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
                             {room.name}
                           </h3>
                           <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800'>
-                            Capacity: {room.capacity}
+                            Capacity: {room.totalCapacity}
                           </span>
                         </div>
+                        <p className='text-sm text-gray-600'>
+                          Can be split into {room.sections} sections of{' '}
+                          {room.sectionCapacity} people each
+                        </p>
                       </div>
                     ))}
                   </div>
                 </div>
+
+                {/* Section Selection */}
+                {selectedRoom && (
+                  <div className='space-y-4'>
+                    <label className='block text-sm font-semibold text-gray-700'>
+                      Number of Sections Needed
+                    </label>
+                    <select
+                      className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
+                      value={selectedSections}
+                      onChange={(e) =>
+                        setSelectedSections(Number(e.target.value))
+                      }
+                    >
+                      {Array.from(
+                        {
+                          length: rooms.find((r) => r.id === selectedRoom)
+                            .sections,
+                        },
+                        (_, i) => i + 1
+                      ).map((num) => (
+                        <option key={num} value={num}>
+                          {num} section{num > 1 ? 's' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* Time Selection */}
                 {availableTimes.length > 0 && (
@@ -353,73 +372,54 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
                     </select>
                   </div>
 
-                  {/* Attendees */}
+                  {/* Attendees List */}
                   <div className='space-y-4'>
                     <label className='block text-sm font-semibold text-gray-700'>
-                      Attendees
+                      Attendee List
                     </label>
-                    <div className='space-y-3'>
-                      {attendees.map((attendee, index) => (
-                        <div
-                          key={index}
-                          className='flex items-center justify-between bg-gray-50 p-3 rounded-xl'
-                        >
-                          <div className='flex items-center space-x-3'>
-                            <div className='h-8 w-8 bg-indigo-100 rounded-full flex items-center justify-center'>
-                              <span className='text-indigo-600 font-medium'>
-                                {attendee.name.charAt(0)}
-                              </span>
-                            </div>
-                            <div>
-                              <p className='font-medium text-gray-900'>
-                                {attendee.name}
-                              </p>
-                              <p className='text-sm text-gray-500'>
-                                ID: {attendee.id}
-                              </p>
-                            </div>
+                    <div className='space-y-2'>
+                      <textarea
+                        className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
+                        rows='6'
+                        value={attendeeList}
+                        onChange={(e) => handleAttendeesInput(e.target.value)}
+                        placeholder='Paste attendee list here&#10;Format: Name, ID&#10;Example:&#10;John Doe, 12345&#10;Jane Smith, 67890'
+                      ></textarea>
+                      <p className='text-sm text-gray-500'>
+                        Paste your attendee list with one person per line.
+                        Format: Name, ID
+                      </p>
+                      {attendeeList && (
+                        <div className='mt-4 p-4 bg-gray-50 rounded-xl'>
+                          <h4 className='font-medium text-gray-900 mb-2'>
+                            Preview:
+                          </h4>
+                          <div className='space-y-2'>
+                            {parseAttendees().map((attendee, index) => (
+                              <div
+                                key={index}
+                                className='flex items-center space-x-3 text-sm'
+                              >
+                                <div className='h-6 w-6 bg-indigo-100 rounded-full flex items-center justify-center'>
+                                  <span className='text-indigo-600 font-medium'>
+                                    {attendee.name.charAt(0)}
+                                  </span>
+                                </div>
+                                <span className='font-medium'>
+                                  {attendee.name}
+                                </span>
+                                <span className='text-gray-500'>
+                                  ID: {attendee.id}
+                                </span>
+                              </div>
+                            ))}
                           </div>
-                          <button
-                            onClick={() => removeAttendee(index)}
-                            className='text-gray-400 hover:text-red-500 transition-colors duration-200'
-                          >
-                            <X size={20} />
-                          </button>
+                          <p className='mt-2 text-sm text-gray-500'>
+                            Total attendees: {parseAttendees().length} /{' '}
+                            {numberOfAttendees || '?'}
+                          </p>
                         </div>
-                      ))}
-
-                      <div className='flex gap-3'>
-                        <input
-                          type='text'
-                          placeholder='Attendee Name'
-                          className='flex-grow bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
-                          value={newAttendee.name}
-                          onChange={(e) =>
-                            setNewAttendee({
-                              ...newAttendee,
-                              name: e.target.value,
-                            })
-                          }
-                        />
-                        <input
-                          type='text'
-                          placeholder='ID Number'
-                          className='w-32 sm:w-40 bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
-                          value={newAttendee.id}
-                          onChange={(e) =>
-                            setNewAttendee({
-                              ...newAttendee,
-                              id: e.target.value,
-                            })
-                          }
-                        />
-                        <button
-                          onClick={handleAddAttendee}
-                          className='bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-4 rounded-xl transition-colors duration-200 flex items-center justify-center'
-                        >
-                          <Plus size={20} />
-                        </button>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -438,7 +438,9 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
                     !selectedRoom ||
                     !selectedTime ||
                     !reservationTitle ||
-                    attendees.length === 0
+                    !numberOfAttendees ||
+                    !attendeeList ||
+                    parseAttendees().length !== parseInt(numberOfAttendees)
                   }
                 >
                   <Calendar size={20} />
@@ -457,15 +459,17 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
           Room: ${
             selectedRoom ? rooms.find((r) => r.id === selectedRoom).name : ''
           }
+          Sections: ${selectedSections}
           Date: ${selectedDate.toDateString()}
           Time: ${selectedTime ? `${selectedTime}:00` : ''}
           Title: ${reservationTitle}
+          Number of Attendees: ${numberOfAttendees}
           Doctor: ${
             selectedDoctor
               ? doctors.find((d) => d.id === selectedDoctor).name
               : 'None'
           }
-          Attendees: ${attendees.length}
+          Total Attendees: ${parseAttendees().length}
         `}
           onConfirm={confirmBooking}
         />

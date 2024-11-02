@@ -1,15 +1,31 @@
-import { Calendar, CalendarIcon, MonitorPlay, Package } from 'lucide-react'
+import {
+  Calendar,
+  CalendarIcon,
+  MonitorPlay,
+  Package,
+  Users,
+} from 'lucide-react'
 import { useQuery } from 'react-query'
 import { axiosInstance } from '../../config'
 
-const StatBox = ({ number, text, icon: Icon, color }) => (
-  <div className={`p-6 rounded-lg shadow-md ${color} text-white flex-1`}>
-    <div className='flex justify-between items-center'>
+const StatBox = ({ number, text, icon: Icon, color, trend }) => (
+  <div className={`p-6 rounded-xl shadow-md ${color} text-white`}>
+    <div className='flex justify-between items-start'>
       <div>
-        <p className='text-3xl font-bold'>{number}</p>
-        <p className='text-sm'>{text}</p>
+        <p className='text-3xl font-bold mb-1'>{number}</p>
+        <p className='text-sm text-white/80'>{text}</p>
+        {trend && (
+          <div className='mt-2 text-sm text-white/80'>
+            <span className={trend > 0 ? 'text-green-300' : 'text-red-300'}>
+              {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
+            </span>
+            {' vs last month'}
+          </div>
+        )}
       </div>
-      <Icon size={24} />
+      <div className='p-2 bg-white/10 rounded-lg'>
+        <Icon size={24} className='text-white' />
+      </div>
     </div>
   </div>
 )
@@ -40,49 +56,40 @@ const StatisticBoxes = () => {
     return response.data
   })
 
-  console.log(fetchedTotalEventsData)
   return (
     <>
       {isLoading && <LoadingSpinner />}
       {!isLoading && (
-        <>
-          <div className='space-y-4'>
-            <div className='flex flex-col sm:flex-row gap-4'>
-              <StatBox
-                number={fetchedTotalEventsData.data.totalEvents}
-                text='Eventos registrados'
-                icon={Calendar}
-                color='bg-blue-700'
-              />
-              <StatBox
-                number='0'
-                text='Reservas de salas'
-                icon={MonitorPlay}
-                color='bg-purple-500'
-              />
-              <StatBox
-                number='0'
-                text='Solicitudes de merch'
-                icon={Package}
-                color='bg-indigo-900'
-              />
-            </div>
-            <div className='flex flex-col sm:flex-row gap-4'>
-              <StatBox
-                number={fetchedTotalEventsData.data.totalEvents}
-                text='Eventos registrados'
-                icon={Calendar}
-                color='bg-blue-700'
-              />
-              <StatBox
-                number='0'
-                text='Reservas de salas'
-                icon={MonitorPlay}
-                color='bg-purple-500'
-              />
-            </div>
-          </div>
-        </>
+        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+          <StatBox
+            number={fetchedTotalEventsData.data?.totalEvents || 0}
+            text='Total Events'
+            icon={Calendar}
+            color='bg-blue-600'
+            trend={12.5}
+          />
+          <StatBox
+            number='1'
+            text='Active Users'
+            icon={Users}
+            color='bg-purple-600'
+            trend={8.2}
+          />
+          <StatBox
+            number='1'
+            text='Room Bookings'
+            icon={MonitorPlay}
+            color='bg-indigo-600'
+            trend={-2.4}
+          />
+          <StatBox
+            number='1'
+            text='Merch Requests'
+            icon={Package}
+            color='bg-pink-600'
+            trend={15.8}
+          />
+        </div>
       )}
     </>
   )
