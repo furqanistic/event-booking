@@ -7,17 +7,17 @@ const rooms = [
   {
     id: 1,
     name: 'Room A',
-    totalCapacity: 15,
+    totalCapacity: 30,
     sections: 3,
-    sectionCapacity: 5,
+    sectionCapacity: 10,
     availability: [9, 10, 11, 13, 14, 15],
   },
   {
     id: 2,
     name: 'Room B',
-    totalCapacity: 5,
-    sections: 1,
-    sectionCapacity: 5,
+    totalCapacity: 20,
+    sections: 2,
+    sectionCapacity: 10,
     availability: [10, 11, 12, 14, 15, 16],
   },
 ]
@@ -204,6 +204,24 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
           <div className='bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden'>
             <div className='p-6'>
               <div className='max-w-2xl mx-auto space-y-8'>
+                {/* Reservation Title Input */}
+                <div className='space-y-4'>
+                  <label
+                    className='block text-sm font-semibold text-gray-700'
+                    htmlFor='title'
+                  >
+                    Reservation Title
+                  </label>
+                  <input
+                    type='text'
+                    id='title'
+                    className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
+                    value={reservationTitle}
+                    onChange={(e) => setReservationTitle(e.target.value)}
+                    placeholder='e.g., Team Meeting, Training Session'
+                  />
+                </div>
+
                 {/* Number of Attendees */}
                 <div className='space-y-4'>
                   <label
@@ -329,98 +347,79 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
                   </div>
                 )}
 
-                {/* Reservation Details */}
-                <div className='space-y-6'>
-                  <div>
-                    <label
-                      className='block text-sm font-semibold text-gray-700 mb-2'
-                      htmlFor='title'
-                    >
-                      Reservation Title
-                    </label>
-                    <input
-                      type='text'
-                      id='title'
+                {/* Doctor Selection */}
+                <div>
+                  <label
+                    className='block text-sm font-semibold text-gray-700 mb-2'
+                    htmlFor='doctor'
+                  >
+                    Request Doctor (Optional)
+                  </label>
+                  <select
+                    id='doctor'
+                    className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 appearance-none'
+                    onChange={(e) =>
+                      setSelectedDoctor(
+                        e.target.value ? Number(e.target.value) : null
+                      )
+                    }
+                    value={selectedDoctor || ''}
+                  >
+                    <option value=''>No doctor needed</option>
+                    <option value={assignedDoctor.id}>
+                      {assignedDoctor.name} - {assignedDoctor.specialty}
+                    </option>
+                  </select>
+                </div>
+
+                {/* Attendees List */}
+                <div className='space-y-4'>
+                  <label className='block text-sm font-semibold text-gray-700'>
+                    Attendee List
+                  </label>
+                  <div className='space-y-2'>
+                    <textarea
                       className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
-                      value={reservationTitle}
-                      onChange={(e) => setReservationTitle(e.target.value)}
-                      placeholder='e.g., Team Meeting, Training Session'
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      className='block text-sm font-semibold text-gray-700 mb-2'
-                      htmlFor='doctor'
-                    >
-                      Request Doctor (Optional)
-                    </label>
-                    <select
-                      id='doctor'
-                      className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 appearance-none'
-                      onChange={(e) =>
-                        setSelectedDoctor(
-                          e.target.value ? Number(e.target.value) : null
-                        )
-                      }
-                      value={selectedDoctor || ''}
-                    >
-                      <option value=''>No doctor needed</option>
-                      <option value={assignedDoctor.id}>
-                        {assignedDoctor.name} - {assignedDoctor.specialty}
-                      </option>
-                    </select>
-                  </div>
-
-                  {/* Attendees List */}
-                  <div className='space-y-4'>
-                    <label className='block text-sm font-semibold text-gray-700'>
-                      Attendee List
-                    </label>
-                    <div className='space-y-2'>
-                      <textarea
-                        className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
-                        rows='6'
-                        value={attendeeList}
-                        onChange={(e) => handleAttendeesInput(e.target.value)}
-                        placeholder='Paste attendee list here&#10;Format: Name, ID&#10;Example:&#10;John Doe, 12345&#10;Jane Smith, 67890'
-                      ></textarea>
-                      <p className='text-sm text-gray-500'>
-                        Paste your attendee list with one person per line.
-                        Format: Name, ID
-                      </p>
-                      {attendeeList && (
-                        <div className='mt-4 p-4 bg-gray-50 rounded-xl'>
-                          <h4 className='font-medium text-gray-900 mb-2'>
-                            Preview:
-                          </h4>
-                          <div className='space-y-2'>
-                            {parseAttendees().map((attendee, index) => (
-                              <div
-                                key={index}
-                                className='flex items-center space-x-3 text-sm'
-                              >
-                                <div className='h-6 w-6 bg-indigo-100 rounded-full flex items-center justify-center'>
-                                  <span className='text-indigo-600 font-medium'>
-                                    {attendee.name.charAt(0)}
-                                  </span>
-                                </div>
-                                <span className='font-medium'>
-                                  {attendee.name}
-                                </span>
-                                <span className='text-gray-500'>
-                                  ID: {attendee.id}
+                      rows='6'
+                      value={attendeeList}
+                      onChange={(e) => handleAttendeesInput(e.target.value)}
+                      placeholder='Paste attendee list here&#10;Format: Name, ID&#10;Example:&#10;John Doe, 12345&#10;Jane Smith, 67890'
+                    ></textarea>
+                    <p className='text-sm text-gray-500'>
+                      Paste your attendee list with one person per line. Format:
+                      Name, ID
+                    </p>
+                    {attendeeList && (
+                      <div className='mt-4 p-4 bg-gray-50 rounded-xl'>
+                        <h4 className='font-medium text-gray-900 mb-2'>
+                          Preview:
+                        </h4>
+                        <div className='space-y-2'>
+                          {parseAttendees().map((attendee, index) => (
+                            <div
+                              key={index}
+                              className='flex items-center space-x-3 text-sm'
+                            >
+                              <div className='h-6 w-6 bg-indigo-100 rounded-full flex items-center justify-center'>
+                                <span className='text-indigo-600 font-medium'>
+                                  {attendee.name.charAt(0)}
                                 </span>
                               </div>
-                            ))}
-                          </div>
-                          <p className='mt-2 text-sm text-gray-500'>
-                            Total attendees: {parseAttendees().length} /{' '}
-                            {numberOfAttendees || '?'}
-                          </p>
+                              <span className='font-medium'>
+                                {attendee.name}
+                              </span>
+                              <span className='text-gray-500'>
+                                ID: {attendee.id}
+                              </span>
+                            </div>
+                          ))}
                         </div>
-                      )}
-                    </div>
+                        <p className='mt-2 text-sm text-gray-500'>
+                          Total attendees: {parseAttendees().length} /{' '}
+                          {numberOfAttendees || '?'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -456,21 +455,21 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
           onClose={() => setShowConfirmDialog(false)}
           title='Confirm Reservation'
           description={`
-          Room: ${
-            selectedRoom ? rooms.find((r) => r.id === selectedRoom).name : ''
-          }
-          Sections: ${selectedSections}
-          Date: ${selectedDate.toDateString()}
-          Time: ${selectedTime ? `${selectedTime}:00` : ''}
-          Title: ${reservationTitle}
-          Number of Attendees: ${numberOfAttendees}
-          Doctor: ${
-            selectedDoctor
-              ? doctors.find((d) => d.id === selectedDoctor).name
-              : 'None'
-          }
-          Total Attendees: ${parseAttendees().length}
-        `}
+            Room: ${
+              selectedRoom ? rooms.find((r) => r.id === selectedRoom).name : ''
+            }
+            Sections: ${selectedSections}
+            Date: ${selectedDate.toDateString()}
+            Time: ${selectedTime ? `${selectedTime}:00` : ''}
+            Title: ${reservationTitle}
+            Number of Attendees: ${numberOfAttendees}
+            Doctor: ${
+              selectedDoctor
+                ? doctors.find((d) => d.id === selectedDoctor).name
+                : 'None'
+            }
+            Total Attendees: ${parseAttendees().length}
+          `}
           onConfirm={confirmBooking}
         />
       </div>

@@ -15,6 +15,13 @@ const deleteEvent = async (eventId) => {
   return eventId
 }
 
+const extendEventDate = async ({ eventId, newEndDate }) => {
+  const response = await axiosInstance.patch(`/events/${eventId}`, {
+    end: new Date(newEndDate).toISOString(),
+  })
+  return { eventId, newEndDate }
+}
+
 const EventsManagementPage = () => {
   const [expandedEventId, setExpandedEventId] = useState(null)
   const [deleteConfirmation, setDeleteConfirmation] = useState({
@@ -22,6 +29,8 @@ const EventsManagementPage = () => {
     eventId: null,
   })
   const [deletingEventId, setDeletingEventId] = useState(null)
+  const [extendingEventId, setExtendingEventId] = useState(null)
+
   const queryClient = useQueryClient()
 
   const {
@@ -42,15 +51,71 @@ const EventsManagementPage = () => {
   }, [refetch])
 
   const deleteMutation = useMutation(deleteEvent, {
-    onMutate: (eventId) => setDeletingEventId(eventId),
+    onMutate: (eventId) => {
+      setDeletingEventId(eventId)
+      // Optimistic update
+      const previousEvents = queryClient.getQueryData('events')
+      queryClient.setQueryData('events', (old) =>
+        old.filter((event) => event._id !== eventId)
+      )
+      return { previousEvents }
+    },
     onSuccess: (deletedEventId) => {
-      queryClient.setQueryData('events', (oldData) =>
-        oldData.filter((event) => event._id !== deletedEventId)
+      queryClient.setQueryData('events', (old) =>
+        old.filter((event) => event._id !== deletedEventId)
       )
       setDeleteConfirmation({ show: false, eventId: null })
       setDeletingEventId(null)
     },
-    onError: () => setDeletingEventId(null),
+    onError: (error, variables, context) => {
+      // Rollback on error
+      if (context?.previousEvents) {
+        queryClient.setQueryData('events', context.previousEvents)
+      }
+      setDeletingEventId(null)
+    },
+    onSettled: () => {
+      setDeletingEventId(null)
+    },
+  })
+
+  const extendMutation = useMutation(extendEventDate, {
+    onMutate: (variables) => {
+      setExtendingEventId(variables.eventId)
+
+      // Optimistic update
+      const previousEvents = queryClient.getQueryData('events')
+      queryClient.setQueryData('events', (old) =>
+        old.map((event) =>
+          event._id === variables.eventId
+            ? { ...event, end: variables.newEndDate }
+            : event
+        )
+      )
+
+      return { previousEvents }
+    },
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData('events', (old) =>
+        old.map((event) =>
+          event._id === variables.eventId
+            ? { ...event, end: variables.newEndDate }
+            : event
+        )
+      )
+      setExtendingEventId(null)
+    },
+    onError: (error, variables, context) => {
+      // Rollback on error
+      if (context?.previousEvents) {
+        queryClient.setQueryData('events', context.previousEvents)
+      }
+      setExtendingEventId(null)
+      // You could add error notification here
+    },
+    onSettled: () => {
+      setExtendingEventId(null)
+    },
   })
 
   const handleDeleteClick = (eventId) => {
@@ -61,6 +126,10 @@ const EventsManagementPage = () => {
     if (deleteConfirmation.eventId) {
       deleteMutation.mutate(deleteConfirmation.eventId)
     }
+  }
+
+  const handleExtendDate = (eventId, newEndDate) => {
+    extendMutation.mutate({ eventId, newEndDate })
   }
 
   const toggleEventDetails = (eventId) => {
@@ -100,8 +169,10 @@ const EventsManagementPage = () => {
               isLoading={isLoading || isFetching}
               expandedEventId={expandedEventId}
               deletingEventId={deletingEventId}
+              extendingEventId={extendingEventId}
               onToggleDetails={toggleEventDetails}
               onDeleteClick={handleDeleteClick}
+              onExtendDate={handleExtendDate}
             />
           )}
         </div>
