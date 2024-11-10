@@ -326,6 +326,53 @@ export const updateEvent = async (req, res) => {
   }
 }
 
+export const updateExtendDate = async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id)
+
+    if (!event) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Event not found',
+      })
+    }
+
+    // Get the extendDate value from request body
+    const extendDays = req.body.extendDate
+
+    if (typeof extendDays !== 'number' || extendDays < 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'extendDate must be a positive number',
+      })
+    }
+
+    // Update the extendDate field
+    const updatedEvent = await Event.findOneAndUpdate(
+      { _id: req.params.id },
+      {
+        $set: { extendDate: extendDays },
+      },
+      {
+        new: true,
+        runValidators: true,
+        upsert: true,
+      }
+    )
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        event: updatedEvent,
+      },
+    })
+  } catch (err) {
+    res.status(400).json({
+      status: 'error',
+      message: err.message,
+    })
+  }
+}
 // Total number of events
 export const getTotalEvents = async (req, res) => {
   try {

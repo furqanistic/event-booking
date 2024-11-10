@@ -80,6 +80,10 @@ const Calendar = () => {
         <div className='w-4 h-4 bg-purple-100 mr-2'></div>
         <span>Cleaning</span>
       </div>
+      <div className='flex items-center'>
+        <div className='w-4 h-4 bg-red-400 mr-2'></div>
+        <span>Extended</span>
+      </div>
     </div>
   )
 
@@ -111,7 +115,19 @@ const Calendar = () => {
         const cleaningDay = new Date(returnEnd)
         cleaningDay.setDate(cleaningDay.getDate() + 1)
 
-        return currentDay >= reachStart && currentDay <= cleaningDay
+        // Calculate extended end date if extendDate exists
+        let extendedEndDate = null
+        if (event.extendDate) {
+          extendedEndDate = new Date(cleaningDay)
+          extendedEndDate.setDate(extendedEndDate.getDate() + event.extendDate)
+        }
+
+        return (
+          currentDay >= reachStart &&
+          (extendedEndDate
+            ? currentDay <= extendedEndDate
+            : currentDay <= cleaningDay)
+        )
       })
       .map((event) => {
         const eventStart = new Date(event.start)
@@ -135,14 +151,36 @@ const Calendar = () => {
         const cleaningDay = new Date(returnEnd)
         cleaningDay.setDate(cleaningDay.getDate() + 1)
 
+        // Calculate extended period
+        let extendedStartDate = null
+        let extendedEndDate = null
+        if (event.extendDate) {
+          extendedStartDate = new Date(cleaningDay)
+          extendedStartDate.setDate(extendedStartDate.getDate() + 1)
+          extendedEndDate = new Date(extendedStartDate)
+          extendedEndDate.setDate(
+            extendedEndDate.getDate() + event.extendDate - 1
+          )
+        }
+
         return {
           ...event,
           isReach: currentDay >= reachStart && currentDay < eventStart,
           isEventDay: currentDay >= eventStart && currentDay <= eventEnd,
           isReturn: currentDay > eventEnd && currentDay <= returnEnd,
           isCleaning: currentDay.toDateString() === cleaningDay.toDateString(),
+          isExtended:
+            extendedStartDate &&
+            currentDay >= extendedStartDate &&
+            currentDay <= extendedEndDate,
           isStart: eventStart.toDateString() === currentDay.toDateString(),
           isEnd: eventEnd.toDateString() === currentDay.toDateString(),
+          isExtendedStart:
+            extendedStartDate &&
+            extendedStartDate.toDateString() === currentDay.toDateString(),
+          isExtendedEnd:
+            extendedEndDate &&
+            extendedEndDate.toDateString() === currentDay.toDateString(),
         }
       })
 
@@ -165,6 +203,7 @@ const Calendar = () => {
       ),
     }
   }
+
   const EventItem = ({ event, position }) => {
     let bgColor = ''
     let label = ''
@@ -175,23 +214,31 @@ const Calendar = () => {
     } else if (event.isCleaning) {
       bgColor = 'bg-purple-100'
       label = 'Cleaning'
+    } else if (event.isExtended) {
+      bgColor = 'bg-red-400'
+      label = 'Extended'
     } else {
       bgColor = 'bg-yellow-100'
       label = event.title || event.eventType
     }
 
-    const borderLeft = event.isStart || event.isReach ? 'border-l-2' : ''
-    const borderRight = event.isEnd || event.isCleaning ? 'border-r-2' : ''
-    const borderColor = 'border-gray-400'
+    const borderLeft =
+      event.isStart || event.isReach || event.isExtendedStart
+        ? 'border-l-2'
+        : ''
+    const borderRight =
+      event.isEnd || event.isCleaning || event.isExtendedEnd ? 'border-r-2' : ''
+    const borderColor = event.isExtended ? 'border-red-400' : 'border-gray-400'
     const borders = `border-t border-b ${borderLeft} ${borderRight} ${borderColor}`
     const opacity =
       event.isReach || event.isReturn
         ? 'opacity-70'
         : event.isCleaning
         ? 'opacity-80'
+        : event.isExtended
+        ? 'opacity-75'
         : ''
 
-    // Increased the base height of each event item and added margin
     return (
       <div
         className={`h-6 ${bgColor} ${borders} ${opacity}
@@ -202,8 +249,7 @@ const Calendar = () => {
           width: 'calc(100% + 2px)',
           marginLeft: '-1px',
           marginRight: '-1px',
-          // Increased spacing between events by adjusting the multiplier
-          top: `${position * 34 + 2}px`, // Changed from 22 to 28 for more spacing
+          top: `${position * 34 + 2}px`,
         }}
         onClick={() => !event.isDraft && setSelectedEvent(event)}
       >
@@ -211,11 +257,16 @@ const Calendar = () => {
           <span className='font-semibold whitespace-nowrap overflow-hidden text-ellipsis'>
             {label}
           </span>
-          {/* Tooltip on hover */}
+          {/* Updated Tooltip */}
           <div className='absolute hidden group-hover:block bg-white p-2 rounded shadow-lg z-50 left-0 top-7 w-48 text-xs'>
             <p className='font-bold'>{event.title || event.eventType}</p>
             <p>Start: {new Date(event.start).toLocaleDateString()}</p>
             <p>End: {new Date(event.end).toLocaleDateString()}</p>
+            {event.extendDate && (
+              <p className='text-green-600'>
+                Extended: {event.extendDate} days
+              </p>
+            )}
             <p>Destination: {event.destination}</p>
           </div>
         </div>

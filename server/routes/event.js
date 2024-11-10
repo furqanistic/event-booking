@@ -8,6 +8,7 @@ import {
   MaterialController,
   MerchandisingController,
   updateEvent,
+  updateExtendDate,
 } from '../controller/event.js'
 
 const router = express.Router()
@@ -18,6 +19,7 @@ router.get('/events/total', getTotalEvents)
 router.get('/events', getAllEvents)
 router.get('/events/:id', getEvent)
 router.put('/events/:id', updateEvent)
+router.put('/events/:id/extend', updateExtendDate)
 router.delete('/events/:id', deleteEvent)
 
 // Material routes

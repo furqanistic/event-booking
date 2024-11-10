@@ -26,6 +26,9 @@ const EventSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    extendDate: {
+      type: Number,
+    },
     selectedMaterials: [
       {
         materialId: {

@@ -18,12 +18,19 @@ import {
   User2,
 } from 'lucide-react'
 import React, { useState } from 'react'
+import { axiosInstance } from '../../config'
 import { destinationData } from '../../dataFile'
 
-const getEventStatus = (start, end, destination) => {
+const getEventStatus = (start, end, destination, extendDate) => {
   const now = new Date()
+  let endDate = new Date(end)
+
+  // If extendDate exists, add those days to the end date for status calculation
+  if (extendDate) {
+    endDate = new Date(endDate.setDate(endDate.getDate() + extendDate))
+  }
+
   const startDate = new Date(start)
-  const endDate = new Date(end)
 
   // Get destination data
   const destData = destinationData[destination?.toUpperCase()] || {
@@ -87,9 +94,40 @@ const ExtendDateDialog = ({
 
   if (!show) return null
 
-  const minDate = currentEndDate
-    ? format(new Date(currentEndDate), 'yyyy-MM-dd')
-    : ''
+  // Format date to YYYY-MM-DD for min attribute
+  const formatDateForInput = (date) => {
+    const d = new Date(date)
+    return d.toISOString().split('T')[0]
+  }
+
+  // Calculate days between two dates
+  const calculateDaysDifference = (startDate, endDate) => {
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    const diffTime = end - start
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+
+  const handleConfirm = async () => {
+    // Calculate days extended
+    const daysExtended = calculateDaysDifference(currentEndDate, newEndDate)
+
+    // Call the onConfirm prop with the calculated days
+    onConfirm(daysExtended)
+  }
+
+  // Format date for display (e.g., "Jan 01, 2024")
+  const formatDateForDisplay = (date) => {
+    const d = new Date(date)
+    return d.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+    })
+  }
+
+  const minDate = formatDateForInput(currentEndDate)
 
   return (
     <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
@@ -99,7 +137,7 @@ const ExtendDateDialog = ({
         </h2>
         <div className='mb-6'>
           <label className='block text-sm font-medium text-gray-700 mb-2'>
-            Current End Date: {format(new Date(currentEndDate), 'MMM dd, yyyy')}
+            Current End Date: {formatDateForDisplay(currentEndDate)}
           </label>
           <input
             type='date'
@@ -117,7 +155,7 @@ const ExtendDateDialog = ({
             Cancel
           </button>
           <button
-            onClick={() => onConfirm(newEndDate)}
+            onClick={handleConfirm}
             disabled={!newEndDate || isExtending}
             className='px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2'
           >
@@ -139,6 +177,13 @@ const ExtendDateDialog = ({
   )
 }
 
+// Function to calculate extended date
+const getExtendedDate = (endDate, extendDate) => {
+  if (!extendDate) return null
+  const date = new Date(endDate)
+  return new Date(date.setDate(date.getDate() + extendDate))
+}
+
 const EventCard = ({
   event,
   isExpanded,
@@ -149,11 +194,40 @@ const EventCard = ({
   extendingEventId,
 }) => {
   const [showExtendDialog, setShowExtendDialog] = useState(false)
-  const status = getEventStatus(event.start, event.end, event.destination)
+  const [ExtendingEventId, setExtendingEventId] = useState(false)
 
-  const handleExtendConfirm = (newEndDate) => {
-    onExtendDate(event._id, newEndDate)
-    setShowExtendDialog(false)
+  // Calculate extended end date if extendDate exists
+  const extendedDate = event.extendDate
+    ? getExtendedDate(event.end, event.extendDate)
+    : null
+  const status = getEventStatus(
+    event.start,
+    event.end,
+    event.destination,
+    event.extendDate
+  )
+
+  const handleExtendConfirm = async (daysExtended) => {
+    try {
+      setExtendingEventId(event._id)
+
+      const response = await axiosInstance.put(`/events/${event._id}/extend`, {
+        extendDate: daysExtended,
+      })
+
+      if (response.data.status === 'success') {
+        setShowExtendDialog(false)
+      }
+    } catch (error) {
+      console.error('Failed to extend event date:', error)
+    } finally {
+      setExtendingEventId(null)
+    }
+  }
+
+  // Format date helper
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString()
   }
 
   return (
@@ -172,10 +246,16 @@ const EventCard = ({
 
           <div className='flex items-center space-x-2'>
             <CalendarIcon className='text-gray-400' size={16} />
-            <span className='text-sm'>
-              {new Date(event.start).toLocaleDateString()} -{' '}
-              {new Date(event.end).toLocaleDateString()}
-            </span>
+            <div className='flex flex-col'>
+              <span className='text-sm'>
+                {formatDate(event.start)} - {formatDate(event.end)}
+              </span>
+              {extendedDate && (
+                <span className='text-xs text-red-600'>
+                  Extended until: {formatDate(extendedDate)}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className='flex items-center space-x-2'>
@@ -259,7 +339,16 @@ const EventCard = ({
                   <DetailSection
                     icon={Clock}
                     title='End Date'
-                    content={new Date(event.end).toLocaleString()}
+                    content={
+                      <>
+                        {new Date(event.end).toLocaleString()}
+                        {extendedDate && (
+                          <span className='ml-2 text-indigo-600'>
+                            (Extended until: {extendedDate.toLocaleString()})
+                          </span>
+                        )}
+                      </>
+                    }
                   />
                   <DetailSection
                     icon={Calendar}
@@ -379,7 +468,7 @@ const EventCard = ({
         show={showExtendDialog}
         onClose={() => setShowExtendDialog(false)}
         onConfirm={handleExtendConfirm}
-        currentEndDate={event.end}
+        currentEndDate={extendedDate || event.end}
         isExtending={extendingEventId === event._id}
       />
     </>

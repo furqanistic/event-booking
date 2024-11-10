@@ -258,6 +258,30 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
                     min={new Date().toISOString().split('T')[0]}
                   />
                 </div>
+                {/* Doctor Selection */}
+                <div>
+                  <label
+                    className='block text-sm font-semibold text-gray-700 mb-2'
+                    htmlFor='doctor'
+                  >
+                    Request Doctor (Optional)
+                  </label>
+                  <select
+                    id='doctor'
+                    className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 appearance-none'
+                    onChange={(e) =>
+                      setSelectedDoctor(
+                        e.target.value ? Number(e.target.value) : null
+                      )
+                    }
+                    value={selectedDoctor || ''}
+                  >
+                    <option value=''>No doctor needed</option>
+                    <option value={assignedDoctor.id}>
+                      {assignedDoctor.name} - {assignedDoctor.specialty}
+                    </option>
+                  </select>
+                </div>
 
                 {/* Room Selection */}
                 <div className='space-y-4'>
@@ -346,31 +370,6 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
                     </div>
                   </div>
                 )}
-
-                {/* Doctor Selection */}
-                <div>
-                  <label
-                    className='block text-sm font-semibold text-gray-700 mb-2'
-                    htmlFor='doctor'
-                  >
-                    Request Doctor (Optional)
-                  </label>
-                  <select
-                    id='doctor'
-                    className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 appearance-none'
-                    onChange={(e) =>
-                      setSelectedDoctor(
-                        e.target.value ? Number(e.target.value) : null
-                      )
-                    }
-                    value={selectedDoctor || ''}
-                  >
-                    <option value=''>No doctor needed</option>
-                    <option value={assignedDoctor.id}>
-                      {assignedDoctor.name} - {assignedDoctor.specialty}
-                    </option>
-                  </select>
-                </div>
 
                 {/* Attendees List */}
                 <div className='space-y-4'>

@@ -240,7 +240,6 @@ const EventList = ({
   onDeleteClick,
 }) => {
   const [searchTerm, setSearchTerm] = useState('')
-
   const filteredEvents = useMemo(() => {
     if (!searchTerm.trim()) return events
 
