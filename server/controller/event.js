@@ -251,6 +251,7 @@ export const getAllEvents = async (req, res) => {
   try {
     const events = await Event.find()
       .populate('creator', 'name email')
+      .populate('extensionNotes.createdBy', 'name email') // Add this line to populate extensionNotes.createdBy
       .sort({ createdAt: -1 })
 
     res.status(200).json({
@@ -337,28 +338,41 @@ export const updateExtendDate = async (req, res) => {
       })
     }
 
-    // Get the extendDate value from request body
-    const extendDays = req.body.extendDate
+    const { extendDate: daysExtended, note } = req.body
 
-    if (typeof extendDays !== 'number' || extendDays < 0) {
+    if (typeof daysExtended !== 'number' || daysExtended < 0) {
       return res.status(400).json({
         status: 'error',
         message: 'extendDate must be a positive number',
       })
     }
 
-    // Update the extendDate field
+    if (!note || typeof note !== 'string') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Extension note is required',
+      })
+    }
+
+    // Update the event with new extension data
     const updatedEvent = await Event.findOneAndUpdate(
       { _id: req.params.id },
       {
-        $set: { extendDate: extendDays },
+        $set: { extendDate: daysExtended },
+        $push: {
+          extensionNotes: {
+            date: new Date(),
+            daysExtended,
+            note,
+            createdBy: req.user?._id, // if you have user info in request
+          },
+        },
       },
       {
         new: true,
         runValidators: true,
-        upsert: true,
       }
-    )
+    ).populate('extensionNotes.createdBy', 'name email')
 
     res.status(200).json({
       status: 'success',

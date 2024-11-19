@@ -29,6 +29,24 @@ const EventSchema = new mongoose.Schema(
     extendDate: {
       type: Number,
     },
+    extensionNotes: [
+      {
+        date: {
+          type: Date,
+          required: true,
+        },
+
+        note: {
+          type: String,
+          required: true,
+        },
+        createdBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+      },
+    ],
     selectedMaterials: [
       {
         materialId: {

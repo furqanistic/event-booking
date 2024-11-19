@@ -1,6 +1,7 @@
 import {
   Calendar,
   CalendarIcon,
+  CalendarPlus,
   ChevronRight,
   Loader,
   MapPin,
@@ -121,14 +122,131 @@ const LoadingSpinner = () => (
   </div>
 )
 
+const ExtendDateDialog = ({
+  show,
+  onClose,
+  onConfirm,
+  currentEndDate,
+  isExtending,
+}) => {
+  const [newEndDate, setNewEndDate] = useState('')
+  const [extensionNote, setExtensionNote] = useState('')
+
+  if (!show) return null
+
+  const formatDateForInput = (date) => {
+    return format(new Date(date), 'yyyy-MM-dd')
+  }
+
+  const calculateDaysDifference = (startDate, endDate) => {
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    const diffTime = end.getTime() - start.getTime()
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  }
+
+  const handleConfirm = () => {
+    if (!extensionNote.trim()) {
+      alert('Please provide a note for the extension')
+      return
+    }
+    const daysExtended = calculateDaysDifference(currentEndDate, newEndDate)
+
+    // Convert to ISO string format for MongoDB
+    const dateForMongo = new Date(newEndDate).toISOString()
+    console.log('Selected date in ISO format:', dateForMongo) // Should show something like "2024-11-14T00:00:00.000Z"
+
+    onConfirm({
+      daysExtended: daysExtended,
+      note: extensionNote,
+      date: dateForMongo,
+      newEndDate: newEndDate,
+    })
+    setNewEndDate('')
+    setExtensionNote('')
+  }
+
+  const minDate = formatDateForInput(currentEndDate)
+
+  return (
+    <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+      <div className='bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4'>
+        <h2 className='text-xl font-semibold text-gray-900 mb-4'>
+          Extend Event End Date
+        </h2>
+        <div className='space-y-4'>
+          <div>
+            <label className='block text-sm font-medium text-gray-700 mb-2'>
+              Current End Date:{' '}
+              {format(new Date(currentEndDate), 'MMM dd, yyyy')}
+            </label>
+            <input
+              type='date'
+              min={minDate}
+              value={newEndDate}
+              onChange={(e) => setNewEndDate(e.target.value)}
+              className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+            />
+          </div>
+
+          <div>
+            <label className='block text-sm font-medium text-gray-700 mb-2'>
+              Extension Note
+            </label>
+            <textarea
+              value={extensionNote}
+              onChange={(e) => setExtensionNote(e.target.value)}
+              placeholder='Please provide a reason for extending the event...'
+              className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 h-24 resize-none'
+              required
+            />
+          </div>
+        </div>
+        <div className='flex justify-end space-x-3 mt-6'>
+          <button
+            onClick={() => {
+              onClose()
+              setNewEndDate('')
+              setExtensionNote('')
+            }}
+            className='px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200'
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={!newEndDate || !extensionNote.trim() || isExtending}
+            className='px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2'
+          >
+            {isExtending ? (
+              <>
+                <Loader className='animate-spin' size={16} />
+                <span>Extending...</span>
+              </>
+            ) : (
+              <>
+                <CalendarPlus size={16} />
+                <span>Extend Date</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const MobileEventCard = ({
   event,
   onToggleDetails,
   onDeleteClick,
+  onExtendDate,
   deletingEventId,
+  extendingEventId,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false)
-  // In MobileEventCard.js
+  const [showExtendDialog, setShowExtendDialog] = useState(false)
+
   const status = getEventStatus(event.start, event.end, event.destination)
 
   const handleToggle = () => {
@@ -137,73 +255,19 @@ const MobileEventCard = ({
   }
 
   return (
-    <div className='bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transform transition-all duration-200 hover:shadow-md hover:-translate-y-1'>
-      <div
-        className='p-4 cursor-pointer hover:bg-gray-50 transition-colors duration-200'
-        onClick={handleToggle}
-      >
-        <div className='flex justify-between items-start mb-4'>
-          <div className='flex items-start space-x-3'>
-            <div className='relative'>
-              <div className='p-2.5 bg-indigo-50 rounded-xl'>
-                <Calendar className='text-indigo-600' size={20} />
-              </div>
-            </div>
-            <div>
-              <h3 className='font-semibold text-gray-900'>{event.title}</h3>
-              <div className='flex items-center space-x-2 mt-1'>
-                <span className='inline-block px-2 py-1 text-xs font-medium bg-indigo-50 text-indigo-600 rounded-full'>
-                  {event.eventType}
-                </span>
-                <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status.color} text-white`}
-                >
-                  {status.label}
-                </span>
-              </div>
-            </div>
-          </div>
-          <ChevronRight
-            className={`text-gray-400 transition-transform duration-300 ${
-              isExpanded ? 'rotate-90' : ''
-            }`}
-            size={20}
-          />
-        </div>
-
-        <div className='space-y-3 text-sm text-gray-600'>
-          <div className='flex items-center space-x-2 p-2 rounded-lg bg-gray-50'>
-            <CalendarIcon className='text-indigo-500 flex-shrink-0' size={16} />
-            <span className='truncate'>
-              {new Date(event.start).toLocaleDateString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-              })}{' '}
-              -{' '}
-              {new Date(event.end).toLocaleDateString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-              })}
-            </span>
-          </div>
-          <div className='flex items-center space-x-2 p-2 rounded-lg bg-gray-50'>
-            <MapPin className='text-indigo-500 flex-shrink-0' size={16} />
-            <span className='truncate'>
-              {event.district}, {event.department}
-            </span>
-          </div>
-          <div className='flex items-center space-x-2 p-2 rounded-lg bg-gray-50'>
-            <User className='text-indigo-500 flex-shrink-0' size={16} />
-            <span className='truncate'>{event.createdBy || 'System'}</span>
-          </div>
-        </div>
-      </div>
-
+    <>
+      {/* ... existing mobile card JSX ... */}
       {isExpanded && (
         <div className='border-t border-gray-100 bg-gray-50'>
           <div className='p-4 space-y-4'>
+            <button
+              onClick={() => setShowExtendDialog(true)}
+              className='w-full px-4 py-2.5 text-sm font-medium text-white bg-indigo-500 rounded-lg hover:bg-indigo-600 transition-colors duration-200 flex items-center justify-center space-x-2'
+            >
+              <CalendarPlus size={16} />
+              <span>Extend Event</span>
+            </button>
+
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -227,7 +291,14 @@ const MobileEventCard = ({
           </div>
         </div>
       )}
-    </div>
+      <ExtendDateDialog
+        show={showExtendDialog}
+        onClose={() => setShowExtendDialog(false)}
+        onExtendDate={onExtendDate}
+        currentEndDate={event.end}
+        isExtending={extendingEventId === event._id}
+      />
+    </>
   )
 }
 
@@ -238,6 +309,7 @@ const EventList = ({
   deletingEventId,
   onToggleDetails,
   onDeleteClick,
+  onExtendDate,
 }) => {
   const [searchTerm, setSearchTerm] = useState('')
   const filteredEvents = useMemo(() => {
@@ -320,6 +392,7 @@ const EventList = ({
                 deletingEventId={deletingEventId}
                 onToggleDetails={onToggleDetails}
                 onDeleteClick={onDeleteClick}
+                onExtendDate={onExtendDate}
               />
             ))}
           </div>
@@ -333,6 +406,7 @@ const EventList = ({
                 deletingEventId={deletingEventId}
                 onToggleDetails={onToggleDetails}
                 onDeleteClick={onDeleteClick}
+                onExtendDate={onExtendDate}
               />
             ))}
           </div>

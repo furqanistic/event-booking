@@ -1,6 +1,7 @@
 import { Calendar } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from 'react-query'
+import { useQuery } from 'react-query' // Keep React Query only for GET request
+import { useSelector } from 'react-redux'
 import EventList from '../components/Event-Management/EventList'
 import { axiosInstance } from '../config'
 import Layout from './Layout'
@@ -8,18 +9,6 @@ import Layout from './Layout'
 const fetchEvents = async () => {
   const response = await axiosInstance.get('/events')
   return response.data.data.events
-}
-
-const deleteEvent = async (eventId) => {
-  await axiosInstance.delete(`/events/${eventId}`)
-  return eventId
-}
-
-const extendEventDate = async ({ eventId, newEndDate }) => {
-  const response = await axiosInstance.patch(`/events/${eventId}`, {
-    end: new Date(newEndDate).toISOString(),
-  })
-  return { eventId, newEndDate }
 }
 
 const EventsManagementPage = () => {
@@ -30,15 +19,14 @@ const EventsManagementPage = () => {
   })
   const [deletingEventId, setDeletingEventId] = useState(null)
   const [extendingEventId, setExtendingEventId] = useState(null)
+  const { currentUser } = useSelector((state) => state.user)
 
-  const queryClient = useQueryClient()
-
+  // Keep React Query for GET request
   const {
     data: eventDetails,
     isLoading,
     isError,
     error,
-    isFetching,
     refetch,
   } = useQuery('events', fetchEvents, {
     staleTime: 60000,
@@ -49,87 +37,47 @@ const EventsManagementPage = () => {
   useEffect(() => {
     refetch()
   }, [refetch])
-
-  const deleteMutation = useMutation(deleteEvent, {
-    onMutate: (eventId) => {
-      setDeletingEventId(eventId)
-      // Optimistic update
-      const previousEvents = queryClient.getQueryData('events')
-      queryClient.setQueryData('events', (old) =>
-        old.filter((event) => event._id !== eventId)
-      )
-      return { previousEvents }
-    },
-    onSuccess: (deletedEventId) => {
-      queryClient.setQueryData('events', (old) =>
-        old.filter((event) => event._id !== deletedEventId)
-      )
-      setDeleteConfirmation({ show: false, eventId: null })
-      setDeletingEventId(null)
-    },
-    onError: (error, variables, context) => {
-      // Rollback on error
-      if (context?.previousEvents) {
-        queryClient.setQueryData('events', context.previousEvents)
-      }
-      setDeletingEventId(null)
-    },
-    onSettled: () => {
-      setDeletingEventId(null)
-    },
-  })
-
-  const extendMutation = useMutation(extendEventDate, {
-    onMutate: (variables) => {
-      setExtendingEventId(variables.eventId)
-
-      // Optimistic update
-      const previousEvents = queryClient.getQueryData('events')
-      queryClient.setQueryData('events', (old) =>
-        old.map((event) =>
-          event._id === variables.eventId
-            ? { ...event, end: variables.newEndDate }
-            : event
-        )
-      )
-
-      return { previousEvents }
-    },
-    onSuccess: (data, variables) => {
-      queryClient.setQueryData('events', (old) =>
-        old.map((event) =>
-          event._id === variables.eventId
-            ? { ...event, end: variables.newEndDate }
-            : event
-        )
-      )
-      setExtendingEventId(null)
-    },
-    onError: (error, variables, context) => {
-      // Rollback on error
-      if (context?.previousEvents) {
-        queryClient.setQueryData('events', context.previousEvents)
-      }
-      setExtendingEventId(null)
-      // You could add error notification here
-    },
-    onSettled: () => {
-      setExtendingEventId(null)
-    },
-  })
-
   const handleDeleteClick = (eventId) => {
     setDeleteConfirmation({ show: true, eventId })
   }
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (deleteConfirmation.eventId) {
-      deleteMutation.mutate(deleteConfirmation.eventId)
+      setDeletingEventId(deleteConfirmation.eventId)
+      try {
+        await axiosInstance.delete(`/events/${deleteConfirmation.eventId}`)
+        // Update local state after successful deletion
+        eventDetails.filter((event) => event._id !== deleteConfirmation.eventId)
+        // Manually update the events data
+        refetch()
+        setDeleteConfirmation({ show: false, eventId: null })
+      } catch (error) {
+        console.error('Failed to delete event:', error)
+      } finally {
+        setDeletingEventId(null)
+      }
     }
   }
 
-  const handleExtendDate = (eventId, newEndDate) => {
-    extendMutation.mutate({ eventId, newEndDate })
+  const handleExtendDate = async (eventId, data) => {
+    console.log('Date in Management Page:', data.date) // Debug log
+    setExtendingEventId(eventId)
+    try {
+      const response = await axiosInstance.put(`/events/${eventId}`, {
+        extendDate: data.daysExtended,
+        extensionNotes: {
+          date: data.date, // Use the exact selected date
+          note: data.note,
+          createdBy: currentUser.data.user._id,
+        },
+      })
+      console.log('Response:', response) // Debug log
+      refetch()
+    } catch (error) {
+      console.error('Failed to extend event date:', error)
+    } finally {
+      setExtendingEventId(null)
+    }
   }
 
   const toggleEventDetails = (eventId) => {
@@ -157,7 +105,7 @@ const EventsManagementPage = () => {
               </h2>
               <p className='text-gray-600 mb-4'>{error.message}</p>
               <button
-                onClick={() => queryClient.invalidateQueries('events')}
+                onClick={refetch}
                 className='px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors duration-200'
               >
                 Retry
@@ -166,7 +114,7 @@ const EventsManagementPage = () => {
           ) : (
             <EventList
               events={eventDetails}
-              isLoading={isLoading || isFetching}
+              isLoading={isLoading}
               expandedEventId={expandedEventId}
               deletingEventId={deletingEventId}
               extendingEventId={extendingEventId}
