@@ -5,6 +5,7 @@ import mongoose from 'mongoose'
 // import admissionRoute from './routes/admission.js'
 import cors from 'cors'
 import authRoute from './routes/auth.js'
+import emailRoutes from './routes/email.js'
 import eventRoutes from './routes/event.js'
 
 const app = express()
@@ -22,7 +23,7 @@ app.use(express.json())
 mongoose.set('strictQuery', true)
 app.use('/api/auth', authRoute)
 app.use('/api/', eventRoutes)
-
+app.use('/api/email', emailRoutes)
 const connect = () => {
   mongoose
     .connect(process.env.MONGO)

@@ -1,14 +1,22 @@
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
+import { useSelector } from 'react-redux'
 import CartSummary from '../components/Merch/CartSummary'
 import ProductGrid from '../components/Merch/ProductGrid'
 import SearchBar from '../components/Merch/SearchBar'
+import { axiosInstance } from '../config'
 import Layout from './Layout'
-
 const MerchPage = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('Carrito')
   const [cartItems, setCartItems] = useState([])
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false)
+  const { currentUser } = useSelector((state) => state.user)
+  const [statusMessage, setStatusMessage] = useState('')
+  const [showStatus, setShowStatus] = useState(false)
+  const [statusType, setStatusType] = useState('loading')
   const [formData, setFormData] = useState({
     address: '',
     reference: '',
@@ -16,6 +24,190 @@ const MerchPage = () => {
     province: '',
     district: '',
   })
+
+  const showLoadingStatus = (message) => {
+    setStatusMessage(message)
+    setStatusType('loading')
+    setShowStatus(true)
+  }
+
+  const showSuccessStatus = (message) => {
+    setStatusMessage(message)
+    setStatusType('success')
+    setTimeout(() => setShowStatus(false), 2000) // Hide after 2 seconds
+  }
+
+  const showErrorStatus = (message) => {
+    setStatusMessage(message)
+    setStatusType('error')
+    setTimeout(() => setShowStatus(false), 3000) // Hide after 3 seconds
+  }
+
+  // Email configuration
+  const NOTIFICATION_EMAILS = [
+    'tcavalcanti.freelance@gmail.com',
+    'gianluca.de.bari@straumann.com',
+    'jocelyn.villanueva@straumann.com',
+    'lorena.alarco@straumann.com',
+    'katherine.taboada@straumann.com',
+    'carla.bustios@straumann.com',
+    'daniel.huamani@straumann.com',
+    'juan.zevallos@straumann.com',
+    'rosa.villagra@straumann.com',
+  ]
+
+  const formatOrderDetails = (cartItems, formData) => {
+    const orderDate = new Date().toLocaleDateString()
+    const orderTime = new Date().toLocaleTimeString()
+    const orderNumber = `ORDER-${Date.now()}`
+
+    const itemsList = cartItems
+      .map((item) => `- ${item.name} x ${item.quantity}`)
+      .join('\n')
+
+    const totalItems = cartItems.reduce(
+      (total, item) => total + item.quantity,
+      0
+    )
+
+    const addressDetails = `
+      Address: ${formData.address}
+      Reference: ${formData.reference || 'N/A'}
+      Department: ${getLabelForValue(departmentOptions, formData.department)}
+      Province: ${getLabelForValue(provinceOptions, formData.province)}
+      District: ${getLabelForValue(districtOptions, formData.district)}
+    `
+
+    const customerDetails = `
+      Name: ${currentUser.data.user.name}
+      Email: ${currentUser.data.user.email}
+    `
+
+    return {
+      subject: `New Order #${orderNumber} - ${orderDate}`,
+      text: `New Order from ${currentUser.data.user.name}`, // Plain text fallback
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>New Order Notification</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
+          <div style="width: 100%; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <!-- Company Header -->
+            <div style="background-color: #2563eb; padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 24px; text-align: center;">Strumann Group - New Order</h1>
+            </div>
+
+            <!-- Main Content -->
+            <div style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; padding: 20px;">
+              <!-- Order Info -->
+              <div style="margin-bottom: 20px;">
+                <p style="color: #374151; font-size: 16px; margin: 4px 0;">
+                  <strong>Order Number:</strong> ${orderNumber}
+                </p>
+                <p style="color: #374151; font-size: 16px; margin: 4px 0;">
+                  <strong>Date:</strong> ${orderDate}
+                </p>
+                <p style="color: #374151; font-size: 16px; margin: 4px 0;">
+                  <strong>Time:</strong> ${orderTime}
+                </p>
+              </div>
+
+              <!-- Customer Info -->
+              <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3 style="color: #1f2937; margin: 0 0 10px 0;">Customer Information</h3>
+                <pre style="margin: 0; font-family: Arial, sans-serif;">${customerDetails}</pre>
+              </div>
+
+              <!-- Order Details -->
+              <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3 style="color: #1f2937; margin: 0 0 10px 0;">Order Details</h3>
+                <pre style="margin: 0; font-family: Arial, sans-serif;">${itemsList}</pre>
+                <hr style="border: 1px solid #e5e7eb; margin: 15px 0;">
+                <p style="margin: 5px 0;"><strong>Total Items:</strong> ${totalItems}</p>
+              </div>
+
+              <!-- Shipping Address -->
+              <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px;">
+                <h3 style="color: #1f2937; margin: 0 0 10px 0;">Shipping Address</h3>
+                <pre style="margin: 0; font-family: Arial, sans-serif;">${addressDetails}</pre>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px;">
+              <p>This is an automated message from Straumann Grp's order system.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    }
+  }
+
+  const sendOrderEmails = async (orderDetails) => {
+    try {
+      await Promise.all(
+        NOTIFICATION_EMAILS.map(async (email) => {
+          const response = await axiosInstance.post('/email/send', {
+            to: email,
+            ...orderDetails,
+          })
+          return response.data
+        })
+      )
+    } catch (error) {
+      console.error('Error sending emails:', error)
+      if (error.response) {
+        throw new Error(
+          `Email service error: ${
+            error.response.data.message || 'Unknown error'
+          }`
+        )
+      } else if (error.request) {
+        throw new Error('No response from email service')
+      } else {
+        throw new Error('Error setting up email request')
+      }
+    }
+  }
+
+  const handleConfirmOrder = async () => {
+    try {
+      setIsConfirmationOpen(false)
+      showLoadingStatus('Processing your order...')
+
+      // Format order details for email
+      const orderDetails = formatOrderDetails(cartItems, formData)
+
+      // Send email notifications
+      await sendOrderEmails(orderDetails)
+
+      // Clear cart and reset form
+      setCartItems([])
+      setActiveTab('Cart')
+      setFormData({
+        address: '',
+        reference: '',
+        department: '',
+        province: '',
+        district: '',
+      })
+
+      // Show success message
+      showSuccessStatus(
+        'Order confirmed! We have received your order successfully ❤️'
+      )
+    } catch (error) {
+      console.error('Error processing order:', error)
+      showErrorStatus(
+        error.message ||
+          'There was an error processing your order. Please try again or contact Us'
+      )
+    }
+  }
 
   const getLabelForValue = (options, value) => {
     const option = options.find((opt) => opt.value === value)
@@ -146,7 +338,74 @@ const MerchPage = () => {
     setDistrictOptions(mockDistrictOptions)
   }
 
-  // ... (rest of your existing code)
+  const StatusModal = () => {
+    return (
+      <Dialog
+        open={showStatus}
+        onOpenChange={() => statusType !== 'loading' && setShowStatus(false)}
+      >
+        <DialogContent className='sm:max-w-md flex flex-col items-center justify-center p-6'>
+          {statusType === 'loading' && (
+            <>
+              <Loader2 className='h-12 w-12 animate-spin text-blue-500 mb-4' />
+              <h3 className='text-lg font-semibold text-center'>
+                {statusMessage}
+              </h3>
+              <p className='text-sm text-gray-500 text-center mt-2'>
+                Please wait while we process your request
+              </p>
+            </>
+          )}
+
+          {statusType === 'success' && (
+            <Alert className='border-green-500 bg-green-50'>
+              <AlertTitle className='text-green-800 flex items-center gap-2'>
+                <svg
+                  xmlns='http://www.w3.org/2000/svg'
+                  className='h-5 w-5'
+                  viewBox='0 0 20 20'
+                  fill='currentColor'
+                >
+                  <path
+                    fillRule='evenodd'
+                    d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z'
+                    clipRule='evenodd'
+                  />
+                </svg>
+                Success
+              </AlertTitle>
+              <AlertDescription className='text-green-700'>
+                {statusMessage}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {statusType === 'error' && (
+            <Alert className='border-red-500 bg-red-50'>
+              <AlertTitle className='text-red-800 flex items-center gap-2'>
+                <svg
+                  xmlns='http://www.w3.org/2000/svg'
+                  className='h-5 w-5'
+                  viewBox='0 0 20 20'
+                  fill='currentColor'
+                >
+                  <path
+                    fillRule='evenodd'
+                    d='M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z'
+                    clipRule='evenodd'
+                  />
+                </svg>
+                Error
+              </AlertTitle>
+              <AlertDescription className='text-red-700'>
+                {statusMessage}
+              </AlertDescription>
+            </Alert>
+          )}
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
   const renderDropdown = (name, value, options) => (
     <div className='relative'>
@@ -203,15 +462,6 @@ const MerchPage = () => {
 
   const handleConfirmPurchase = () => {
     setIsConfirmationOpen(true)
-  }
-
-  const handleConfirmOrder = () => {
-    // Here you would typically send the order to your backend
-    console.log('Order confirmed:', { cartItems, formData })
-    setIsConfirmationOpen(false)
-    setCartItems([])
-    setActiveTab('Carrito')
-    // You might want to show a success message here
   }
 
   return (
@@ -434,6 +684,7 @@ const MerchPage = () => {
           </div>
         </div>
       )}
+      <StatusModal />
     </Layout>
   )
 }

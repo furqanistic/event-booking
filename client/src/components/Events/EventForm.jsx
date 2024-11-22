@@ -284,10 +284,37 @@ const EventForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    // Validation checks
     if (!formData.start || !formData.end) {
       setFormError('Please select start and end dates for the event.')
       return
     }
+
+    if (!formData.title?.trim()) {
+      setFormError('Please enter an event title.')
+      return
+    }
+
+    if (!formData.destination) {
+      setFormError('Please select a destination.')
+      return
+    }
+
+    if (formData.materials && formData.selectedMaterials.length === 0) {
+      setFormError(
+        'Please select at least one material or disable materials option.'
+      )
+      return
+    }
+
+    if (formData.merchandising && formData.selectedMerchandising.length === 0) {
+      setFormError(
+        'Please select at least one merchandising item or disable merchandising option.'
+      )
+      return
+    }
+
     setIsLoading(true)
     setFormError(null)
 
@@ -320,34 +347,157 @@ const EventForm = () => {
     }
 
     try {
-      // First, update the inventory for each selected material
-      await Promise.all(
-        formData.selectedMaterials.map((item) =>
-          updateInventoryMutation.mutateAsync({
-            ...item,
-            destination: formData.destination, // Include the destination
-          })
+      // First, update inventory for selected materials
+      if (formData.materials && formData.selectedMaterials.length > 0) {
+        await Promise.all(
+          formData.selectedMaterials.map((item) =>
+            updateInventoryMutation.mutateAsync({
+              ...item,
+              startDate: formData.start,
+              endDate: formData.end,
+              destination: formData.destination,
+            })
+          )
         )
-      )
+      }
 
       // Create the event
-      await createEventMutation.mutateAsync(newEvent)
+      const createdEvent = await createEventMutation.mutateAsync(newEvent)
+
+      // Send email notifications
+      const NOTIFICATION_EMAILS = [
+        currentUser.data.user.email, // Event creator
+        'tcavalcanti.freelance@gmail.com',
+        'gianluca.de.bari@straumann.com',
+        'jocelyn.villanueva@straumann.com',
+        'ivan.falla@straumann.com	',
+        'miguel.narvaez@straumann.com',
+        'joaquin.ruiz@straumann.com',
+        'sofia.faustor@straumann.com',
+      ]
+
+      const eventEmailDetails = {
+        subject: `Event Registration: ${formData.title}`,
+        text: `New Event Registration from ${currentUser.data.user.name}`,
+        html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Event Registration Details</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
+          <div style="width: 100%; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #2563eb; padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 24px; text-align: center;">Event Registration Confirmation</h1>
+            </div>
+
+            <div style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; padding: 20px;">
+              <div style="margin-bottom: 20px;">
+                <h2 style="color: #374151; margin: 0 0 10px 0;">${
+                  formData.title
+                }</h2>
+                <p><strong>Event Type:</strong> ${formData.eventType}</p>
+                <p><strong>Date Range:</strong> ${formData.start.toLocaleDateString()} to ${formData.end.toLocaleDateString()}</p>
+                <p><strong>Destination:</strong> ${formData.destination}</p>
+              </div>
+
+              ${
+                formData.materials && formData.selectedMaterials.length > 0
+                  ? `
+                <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                  <h3 style="color: #1f2937; margin: 0 0 10px 0;">Reserved Materials</h3>
+                  <ul style="margin: 0; padding-left: 20px;">
+                    ${formData.selectedMaterials
+                      .map(
+                        (item) => `
+                      <li>${item.name} - Quantity: ${item.quantity}</li>
+                    `
+                      )
+                      .join('')}
+                  </ul>
+                </div>
+              `
+                  : ''
+              }
+
+              ${
+                formData.merchandising &&
+                formData.selectedMerchandising.length > 0
+                  ? `
+                <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                  <h3 style="color: #1f2937; margin: 0 0 10px 0;">Merchandising Items</h3>
+                  <ul style="margin: 0; padding-left: 20px;">
+                    ${formData.selectedMerchandising
+                      .map(
+                        (item) => `
+                      <li>${item.name} - Quantity: ${item.quantity}</li>
+                    `
+                      )
+                      .join('')}
+                  </ul>
+                </div>
+              `
+                  : ''
+              }
+
+              <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px;">
+                <h3 style="color: #1f2937; margin: 0 0 10px 0;">Event Location</h3>
+                <p style="margin: 0;">
+                  ${formData.address ? `Address: ${formData.address}<br>` : ''}
+                  ${
+                    formData.reference
+                      ? `Reference: ${formData.reference}<br>`
+                      : ''
+                  }
+                  Department: ${formData.department}<br>
+                  Province: ${formData.province}<br>
+                  District: ${formData.district}
+                </p>
+              </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px;">
+              <p>This is an automated message for your event registration.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      }
+
+      // Send emails to all recipients
+      await Promise.all(
+        NOTIFICATION_EMAILS.map(async (email) => {
+          try {
+            await axiosInstance.post('/email/send', {
+              to: email,
+              ...eventEmailDetails,
+            })
+          } catch (error) {
+            console.error(`Failed to send email to ${email}:`, error)
+            // Don't throw here, continue with other emails
+          }
+        })
+      )
 
       // Invalidate and refetch relevant queries
       queryClient.invalidateQueries('materials')
       queryClient.invalidateQueries('events')
 
+      // Show success message and reset form
+      toast.success('Event successfully registered and notifications sent!')
       resetForm()
       refreshEvents()
     } catch (error) {
-      console.error('Error creating event:', error.response || error)
+      console.error('Error processing event:', error.response || error)
       const errorMessage =
         error.response?.data?.message ||
         error.message ||
         'An unknown error occurred'
-      setFormError(`Failed to create event. ${errorMessage}`)
+      setFormError(`Failed to create event: ${errorMessage}`)
 
-      toast.error(`Failed to create event. ${errorMessage}`, {
+      toast.error(`Failed to create event: ${errorMessage}`, {
         duration: 5000,
         style: {
           background: 'rgb(249, 167, 167)',
