@@ -206,21 +206,25 @@ const Calendar = () => {
 
   const EventItem = ({ event, position }) => {
     let bgColor = ''
-    let label = ''
+    let statusAbbr = ''
 
+    // Define status abbreviations
     if (event.isReach || event.isReturn) {
       bgColor = 'bg-blue-100'
-      label = 'In-Transit'
+      statusAbbr = ':IT' // In-Transit
     } else if (event.isCleaning) {
       bgColor = 'bg-purple-100'
-      label = 'Cleaning'
+      statusAbbr = ':CL' // Cleaning
     } else if (event.isExtended) {
       bgColor = 'bg-red-400'
-      label = 'Extended'
+      statusAbbr = ':EX' // Extended
     } else {
       bgColor = 'bg-yellow-100'
-      label = event.title || event.eventType
+      statusAbbr = ':EV' // Event
     }
+
+    const eventName = event.title || event.eventType
+    const label = `${eventName} ${statusAbbr}`
 
     const borderLeft =
       event.isStart || event.isReach || event.isExtendedStart
@@ -242,9 +246,9 @@ const Calendar = () => {
     return (
       <div
         className={`h-6 ${bgColor} ${borders} ${opacity}
-        cursor-pointer hover:bg-opacity-75 transition-colors duration-200
-        text-xs overflow-hidden flex items-center
-        absolute left-0 right-0 group`}
+      cursor-pointer hover:bg-opacity-75 transition-colors duration-200
+      text-xs overflow-hidden flex items-center
+      absolute left-0 right-0 group`}
         style={{
           width: 'calc(100% + 2px)',
           marginLeft: '-1px',
@@ -259,7 +263,7 @@ const Calendar = () => {
           </span>
           {/* Updated Tooltip */}
           <div className='absolute hidden group-hover:block bg-white p-2 rounded shadow-lg z-50 left-0 top-7 w-48 text-xs'>
-            <p className='font-bold'>{event.title || event.eventType}</p>
+            <p className='font-bold'>{eventName}</p>
             <p>Start: {new Date(event.start).toLocaleDateString()}</p>
             <p>End: {new Date(event.end).toLocaleDateString()}</p>
             {event.extendDate && (

@@ -1,6 +1,6 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { Loader2 } from 'lucide-react'
+import { CheckCircle2, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { useSelector } from 'react-redux'
 import CartSummary from '../components/Merch/CartSummary'
@@ -17,6 +17,7 @@ const MerchPage = () => {
   const [statusMessage, setStatusMessage] = useState('')
   const [showStatus, setShowStatus] = useState(false)
   const [statusType, setStatusType] = useState('loading')
+  const [deliveryMethod, setDeliveryMethod] = useState('delivery')
   const [formData, setFormData] = useState({
     address: '',
     reference: '',
@@ -34,7 +35,12 @@ const MerchPage = () => {
   const showSuccessStatus = (message) => {
     setStatusMessage(message)
     setStatusType('success')
-    setTimeout(() => setShowStatus(false), 2000) // Hide after 2 seconds
+    // Keep success message visible for longer (5 seconds)
+    setTimeout(() => {
+      setShowStatus(false)
+      // Reset to cart view after success message disappears
+      setActiveTab('Carrito')
+    }, 5000)
   }
 
   const showErrorStatus = (message) => {
@@ -44,16 +50,19 @@ const MerchPage = () => {
   }
 
   // Email configuration
-  const NOTIFICATION_EMAILS = [
-    'tcavalcanti.freelance@gmail.com',
-    'gianluca.de.bari@straumann.com',
+  const MARKETING_EMAILS = [
     'jocelyn.villanueva@straumann.com',
+    'gianluca.de.bari@straumann.com',
+  ]
+
+  const LOGISTICS_EMAILS = [
+    'tcavalcanti.freelance@gmail.com',
     'lorena.alarco@straumann.com',
-    'katherine.taboada@straumann.com',
-    'carla.bustios@straumann.com',
     'daniel.huamani@straumann.com',
     'juan.zevallos@straumann.com',
     'rosa.villagra@straumann.com',
+    'katherine.taboada@straumann.com',
+    'carla.bustios@straumann.com',
   ]
 
   const formatOrderDetails = (cartItems, formData) => {
@@ -70,13 +79,16 @@ const MerchPage = () => {
       0
     )
 
-    const addressDetails = `
-      Address: ${formData.address}
-      Reference: ${formData.reference || 'N/A'}
-      Department: ${getLabelForValue(departmentOptions, formData.department)}
-      Province: ${getLabelForValue(provinceOptions, formData.province)}
-      District: ${getLabelForValue(districtOptions, formData.district)}
-    `
+    const deliveryDetails =
+      deliveryMethod === 'delivery'
+        ? `
+        Address: ${formData.address}
+        Reference: ${formData.reference || 'N/A'}
+        Department: ${getLabelForValue(departmentOptions, formData.department)}
+        Province: ${getLabelForValue(provinceOptions, formData.province)}
+        District: ${getLabelForValue(districtOptions, formData.district)}
+      `
+        : 'Pickup from Straumann Office'
 
     const customerDetails = `
       Name: ${currentUser.data.user.name}
@@ -84,8 +96,10 @@ const MerchPage = () => {
     `
 
     return {
-      subject: `New Order #${orderNumber} - ${orderDate}`,
-      text: `New Order from ${currentUser.data.user.name}`, // Plain text fallback
+      subject: `New ${
+        deliveryMethod === 'pickup' ? 'Pickup' : 'Delivery'
+      } Order #${orderNumber} - ${orderDate}`,
+      text: `New Order from ${currentUser.data.user.name}`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -97,7 +111,11 @@ const MerchPage = () => {
           <div style="width: 100%; max-width: 600px; margin: 0 auto; padding: 20px;">
             <!-- Company Header -->
             <div style="background-color: #2563eb; padding: 20px; border-radius: 8px 8px 0 0;">
-              <h1 style="color: white; margin: 0; font-size: 24px; text-align: center;">Strumann Group - New Order</h1>
+              <h1 style="color: white; margin: 0; font-size: 24px; text-align: center;">
+                Straumann Group - New ${
+                  deliveryMethod === 'pickup' ? 'Pickup' : 'Delivery'
+                } Order
+              </h1>
             </div>
 
             <!-- Main Content -->
@@ -129,10 +147,14 @@ const MerchPage = () => {
                 <p style="margin: 5px 0;"><strong>Total Items:</strong> ${totalItems}</p>
               </div>
 
-              <!-- Shipping Address -->
+              <!-- Delivery/Pickup Info -->
               <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px;">
-                <h3 style="color: #1f2937; margin: 0 0 10px 0;">Shipping Address</h3>
-                <pre style="margin: 0; font-family: Arial, sans-serif;">${addressDetails}</pre>
+                <h3 style="color: #1f2937; margin: 0 0 10px 0;">
+                  ${
+                    deliveryMethod === 'pickup' ? 'Pickup' : 'Delivery'
+                  } Information
+                </h3>
+                <pre style="margin: 0; font-family: Arial, sans-serif;">${deliveryDetails}</pre>
               </div>
             </div>
 
@@ -149,8 +171,13 @@ const MerchPage = () => {
 
   const sendOrderEmails = async (orderDetails) => {
     try {
+      const emailList =
+        deliveryMethod === 'pickup'
+          ? MARKETING_EMAILS
+          : [...MARKETING_EMAILS, ...LOGISTICS_EMAILS]
+
       await Promise.all(
-        NOTIFICATION_EMAILS.map(async (email) => {
+        emailList.map(async (email) => {
           const response = await axiosInstance.post('/email/send', {
             to: email,
             ...orderDetails,
@@ -160,17 +187,7 @@ const MerchPage = () => {
       )
     } catch (error) {
       console.error('Error sending emails:', error)
-      if (error.response) {
-        throw new Error(
-          `Email service error: ${
-            error.response.data.message || 'Unknown error'
-          }`
-        )
-      } else if (error.request) {
-        throw new Error('No response from email service')
-      } else {
-        throw new Error('Error setting up email request')
-      }
+      throw error
     }
   }
 
@@ -187,7 +204,6 @@ const MerchPage = () => {
 
       // Clear cart and reset form
       setCartItems([])
-      setActiveTab('Cart')
       setFormData({
         address: '',
         reference: '',
@@ -196,15 +212,15 @@ const MerchPage = () => {
         district: '',
       })
 
-      // Show success message
+      // Show enhanced success message
       showSuccessStatus(
-        'Order confirmed! We have received your order successfully ❤️'
+        'Your order has been successfully placed! You will receive a confirmation email shortly. Thank you for your purchase! 🎉'
       )
     } catch (error) {
       console.error('Error processing order:', error)
       showErrorStatus(
         error.message ||
-          'There was an error processing your order. Please try again or contact Us'
+          'There was an error processing your order. Please try again or contact us.'
       )
     }
   }
@@ -360,22 +376,14 @@ const MerchPage = () => {
           {statusType === 'success' && (
             <Alert className='border-green-500 bg-green-50'>
               <AlertTitle className='text-green-800 flex items-center gap-2'>
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  className='h-5 w-5'
-                  viewBox='0 0 20 20'
-                  fill='currentColor'
-                >
-                  <path
-                    fillRule='evenodd'
-                    d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z'
-                    clipRule='evenodd'
-                  />
-                </svg>
-                Success
+                <CheckCircle2 className='h-5 w-5' />
+                Order Confirmed!
               </AlertTitle>
-              <AlertDescription className='text-green-700'>
+              <AlertDescription className='text-green-700 mt-2'>
                 {statusMessage}
+                <div className='mt-4 text-sm'>
+                  You can contact us, if you face any problem!
+                </div>
               </AlertDescription>
             </Alert>
           )}
@@ -464,6 +472,20 @@ const MerchPage = () => {
     setIsConfirmationOpen(true)
   }
 
+  const handleDeliveryMethodChange = (method) => {
+    setDeliveryMethod(method)
+    if (method === 'pickup') {
+      // Reset delivery-related form fields
+      setFormData({
+        address: '',
+        reference: '',
+        department: '',
+        province: '',
+        district: '',
+      })
+    }
+  }
+
   return (
     <Layout>
       <div className='min-h-screen flex flex-col lg:flex-row'>
@@ -511,77 +533,132 @@ const MerchPage = () => {
           ) : (
             <>
               <form className='space-y-4'>
+                {/* Delivery Method Selection */}
                 <div className='space-y-4 border border-gray-200 rounded-md p-4'>
-                  <h3 className='font-medium text-gray-700'>Dirección</h3>
-
-                  <div>
-                    <label className='block text-sm text-gray-600 mb-1'>
-                      Dirección:
+                  <h3 className='font-medium text-gray-700'>
+                    Método de entrega
+                  </h3>
+                  <div className='flex space-x-4'>
+                    <label className='flex items-center'>
+                      <input
+                        type='radio'
+                        value='delivery'
+                        checked={deliveryMethod === 'delivery'}
+                        onChange={(e) =>
+                          handleDeliveryMethodChange(e.target.value)
+                        }
+                        className='mr-2'
+                      />
+                      Delivery
                     </label>
-                    <input
-                      type='text'
-                      name='address'
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      className='w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    />
-                  </div>
-
-                  <div>
-                    <label className='block text-sm text-gray-600 mb-1'>
-                      Referencia
+                    <label className='flex items-center'>
+                      <input
+                        type='radio'
+                        value='pickup'
+                        checked={deliveryMethod === 'pickup'}
+                        onChange={(e) =>
+                          handleDeliveryMethodChange(e.target.value)
+                        }
+                        className='mr-2'
+                      />
+                      Recoger
                     </label>
-                    <input
-                      type='text'
-                      name='reference'
-                      value={formData.reference}
-                      onChange={handleInputChange}
-                      className='w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    />
-                  </div>
-
-                  <div>
-                    <label className='block text-sm text-gray-600 mb-1'>
-                      Departamento
-                    </label>
-                    {renderDropdown(
-                      'department',
-                      formData.department,
-                      departmentOptions
-                    )}
-                  </div>
-
-                  <div>
-                    <label className='block text-sm text-gray-600 mb-1'>
-                      Provincia
-                    </label>
-                    {renderDropdown(
-                      'province',
-                      formData.province,
-                      provinceOptions
-                    )}
-                  </div>
-
-                  <div>
-                    <label className='block text-sm text-gray-600 mb-1'>
-                      Distrito
-                    </label>
-                    {renderDropdown(
-                      'district',
-                      formData.district,
-                      districtOptions
-                    )}
                   </div>
                 </div>
+
+                {/* Address Form - Only show if delivery is selected */}
+                {deliveryMethod === 'delivery' && (
+                  <div className='space-y-4 border border-gray-200 rounded-md p-4'>
+                    <h3 className='font-medium text-gray-700'>Dirección</h3>
+
+                    <div>
+                      <label className='block text-sm text-gray-600 mb-1'>
+                        Dirección:
+                      </label>
+                      <input
+                        type='text'
+                        name='address'
+                        value={formData.address}
+                        onChange={handleInputChange}
+                        className='w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                      />
+                    </div>
+
+                    <div>
+                      <label className='block text-sm text-gray-600 mb-1'>
+                        Referencia
+                      </label>
+                      <input
+                        type='text'
+                        name='reference'
+                        value={formData.reference}
+                        onChange={handleInputChange}
+                        className='w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                      />
+                    </div>
+
+                    <div>
+                      <label className='block text-sm text-gray-600 mb-1'>
+                        Departamento
+                      </label>
+                      {renderDropdown(
+                        'department',
+                        formData.department,
+                        departmentOptions
+                      )}
+                    </div>
+
+                    <div>
+                      <label className='block text-sm text-gray-600 mb-1'>
+                        Provincia
+                      </label>
+                      {renderDropdown(
+                        'province',
+                        formData.province,
+                        provinceOptions
+                      )}
+                    </div>
+
+                    <div>
+                      <label className='block text-sm text-gray-600 mb-1'>
+                        Distrito
+                      </label>
+                      {renderDropdown(
+                        'district',
+                        formData.district,
+                        districtOptions
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Pickup Information - Only show if pickup is selected */}
+                {deliveryMethod === 'pickup' && (
+                  <div className='space-y-4 border border-gray-200 rounded-md p-4'>
+                    <h3 className='font-medium text-gray-700'>
+                      Información de recojo
+                    </h3>
+                    <p className='text-gray-600'>
+                      Puedes recoger tu pedido aquí:
+                    </p>
+                    <div className='bg-gray-50 p-4 rounded'>
+                      <p className='font-medium'>Straumann Group</p>
+                      <p>You will receive pickup details via an email.</p>
+                    </div>
+                  </div>
+                )}
               </form>
+
               <button
                 className='w-full mt-4 bg-blue-600 text-white px-4 py-2 rounded'
                 onClick={handleConfirmPurchase}
                 disabled={
-                  !formData.address ||
-                  !formData.department ||
-                  !formData.province ||
-                  !formData.district
+                  deliveryMethod === 'delivery'
+                    ? !formData.address ||
+                      !formData.department ||
+                      !formData.province ||
+                      !formData.district
+                    : false
                 }
               >
                 Confirmar pedido

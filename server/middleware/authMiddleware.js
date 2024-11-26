@@ -4,19 +4,14 @@ import User from '../models/User.js'
 
 export const verifyToken = async (req, res, next) => {
   try {
-    console.log('Entering verifyToken middleware')
-    console.log('Headers:', JSON.stringify(req.headers, null, 2))
-
     let token
     if (
       req.headers.authorization &&
       req.headers.authorization.startsWith('Bearer')
     ) {
       token = req.headers.authorization.split(' ')[1]
-      console.log('Token extracted from Authorization header:', token)
     } else if (req.cookies.jwt) {
       token = req.cookies.jwt
-      console.log('Token extracted from cookies:', token)
     }
 
     if (!token) {
