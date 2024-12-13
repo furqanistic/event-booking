@@ -15,23 +15,19 @@ export const verifyToken = async (req, res, next) => {
     }
 
     if (!token) {
-      console.log('No token found')
       return next(
         createError(401, 'You are not logged in! Please log in to get access.')
       )
     }
 
-    console.log('Verifying token')
     let decoded
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET)
-      console.log('Decoded token:', decoded)
     } catch (err) {
       console.error('Token verification failed:', err.message)
       return next(createError(401, 'Invalid token. Please log in again.'))
     }
 
-    console.log('Finding user with id:', decoded.id)
     const currentUser = await User.findById(decoded.id)
     if (!currentUser) {
       console.log('User not found in database')
@@ -40,9 +36,7 @@ export const verifyToken = async (req, res, next) => {
       )
     }
 
-    console.log('User found:', currentUser)
     req.user = currentUser
-    console.log('req.user set to:', req.user)
     next()
   } catch (err) {
     console.error('Error in verifyToken:', err)

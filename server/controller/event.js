@@ -146,10 +146,12 @@ export const createEvent = async (req, res) => {
   try {
     const {
       eventType,
+      isInternal,
       start,
       end,
       materials,
       merchandising,
+      trainer, // Add trainer to destructuring
       address,
       reference,
       department,
@@ -163,22 +165,22 @@ export const createEvent = async (req, res) => {
       creator,
     } = req.body
 
-    // Validate required fields
-    if (
-      !eventType ||
-      !start ||
-      !end ||
-      !address ||
-      !department ||
-      !province ||
-      !district ||
-      !destination ||
-      !title
-    ) {
+    // Basic validation for all events
+    if (!eventType || !start || !end || !title) {
       return res.status(400).json({
         status: 'error',
         message: 'Missing required fields',
       })
+    }
+
+    // Additional validation only for external events
+    if (!isInternal) {
+      if (!address || !department || !province || !district || !destination) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Missing required fields for external event',
+        })
+      }
     }
 
     const startDate = new Date(start)
@@ -191,39 +193,49 @@ export const createEvent = async (req, res) => {
       })
     }
 
-    // Add date to selectedMaterials and selectedMerchandising
-    const processedSelectedMaterials = selectedMaterials.map((item) => ({
-      ...item,
-      date: startDate,
-    }))
-
-    const processedSelectedMerchandising = selectedMerchandising.map(
-      (item) => ({
+    // Process materials and merchandising
+    const processedSelectedMaterials =
+      selectedMaterials?.map((item) => ({
         ...item,
         date: startDate,
-      })
-    )
+      })) || []
 
-    // Create and save the new event with creator
-    const newEvent = new Event({
+    const processedSelectedMerchandising =
+      selectedMerchandising?.map((item) => ({
+        ...item,
+        date: startDate,
+      })) || []
+
+    // Create event object
+    const eventData = {
       eventType,
-      creator, // Assuming req.user is set by authentication middleware
+      isInternal,
+      title,
+      description,
       start: startDate,
       end: endDate,
       materials,
       selectedMaterials: processedSelectedMaterials,
       merchandising,
       selectedMerchandising: processedSelectedMerchandising,
-      address,
-      reference,
-      department,
-      province,
-      district,
-      destination,
-      title,
-      description,
-    })
+      creator,
+    }
 
+    // Add external event fields
+    if (!isInternal) {
+      Object.assign(eventData, {
+        trainer: trainer || false, // Add default value
+        address,
+        reference,
+        department,
+        province,
+        district,
+        destination,
+      })
+    }
+
+    // Create and save the new event
+    const newEvent = new Event(eventData)
     const savedEvent = await newEvent.save()
 
     // Populate creator information before sending response
@@ -535,15 +547,7 @@ const createInventoryController = (Model) => ({
   updateAvailability: async (req, res) => {
     try {
       const { id } = req.params
-      const { quantity, startDate, endDate, destination } = req.body
-
-      if (!destination) {
-        return res.status(400).json({
-          status: 'error',
-          message:
-            'Destination is required for calculating transportation and cleaning days',
-        })
-      }
+      const { quantity, startDate, endDate, destination, isInternal } = req.body
 
       const material = await Material.findById(id)
       if (!material) {
@@ -555,11 +559,32 @@ const createInventoryController = (Model) => ({
 
       const start = new Date(startDate)
       const end = new Date(endDate)
-      const { daysToReach, daysToReturn, cleaningDays } = destinationData[
-        destination
-      ] || { daysToReach: 0, daysToReturn: 0, cleaningDays: 0 }
 
-      // Calculate the full range of dates to update
+      // Skip destination validation for internal events
+      let daysToReach = 0,
+        daysToReturn = 0,
+        cleaningDays = 0
+
+      if (!isInternal) {
+        if (!destination) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Destination is required for external events',
+          })
+        }
+
+        const destinationInfo = destinationData[destination]
+        if (!destinationInfo) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Invalid destination',
+          })
+        }
+
+        ;({ daysToReach, daysToReturn, cleaningDays } = destinationInfo)
+      }
+
+      // Calculate dates
       const fullStartDate = new Date(start)
       fullStartDate.setDate(fullStartDate.getDate() - daysToReach)
 

@@ -42,11 +42,14 @@ router.delete('/materials/:id', MaterialController.delete)
 router.get('/materials/:id', MaterialController.getSpecificMaterial)
 
 // Merchandising routes
+// Merchandising routes
 router.post('/merchandising', MerchandisingController.create)
 router.get('/merchandising', MerchandisingController.getAll)
 router.patch('/merchandising/:id', MerchandisingController.update)
-
-router.patch('/merchandising/:id', MerchandisingController.updateAvailability)
+router.patch(
+  '/merchandising/:id/update-availability',
+  MerchandisingController.updateAvailability
+)
 router.post(
   '/merchandising/check-availability',
   MerchandisingController.checkAvailability

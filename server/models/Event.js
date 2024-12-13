@@ -7,6 +7,11 @@ const EventSchema = new mongoose.Schema(
       required: true,
       enum: ['Congreso', 'Seminario', 'Taller', 'Conferencia'],
     },
+    isInternal: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
     title: {
       type: String,
       required: true,
@@ -26,27 +31,6 @@ const EventSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    extendDate: {
-      type: Number,
-    },
-    extensionNotes: [
-      {
-        date: {
-          type: Date,
-          required: true,
-        },
-
-        note: {
-          type: String,
-          required: true,
-        },
-        createdBy: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
-          required: true,
-        },
-      },
-    ],
     selectedMaterials: [
       {
         materialId: {
@@ -93,34 +77,73 @@ const EventSchema = new mongoose.Schema(
         },
       },
     ],
+    // External event specific fields
     address: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.isInternal
+      },
     },
     reference: {
       type: String,
     },
     department: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.isInternal
+      },
     },
     province: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.isInternal
+      },
     },
     district: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.isInternal
+      },
     },
     destination: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.isInternal
+      },
+    },
+    trainer: {
+      type: Boolean,
+      default: false,
+    },
+    roomReservation: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'RoomReservation',
     },
     creator: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
-    }, //for who created
+    },
+    extendDate: {
+      type: Number,
+    },
+    extensionNotes: [
+      {
+        date: {
+          type: Date,
+          required: true,
+        },
+        note: {
+          type: String,
+          required: true,
+        },
+        createdBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+      },
+    ],
   },
   { timestamps: true }
 )
