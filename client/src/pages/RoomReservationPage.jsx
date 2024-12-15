@@ -1,11 +1,20 @@
-import { Calendar, ChevronDown, Plus, X } from 'lucide-react'
+// RoomReservationPage.js
+import { axiosInstance } from '@/config'
 import React, { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
+
+import ReservationForm from '@/components/Room-Reservation/ReservationForm'
+import RoomSection from '@/components/Room-Reservation/RoomSection'
+import { AlertDialog } from '@/components/ui/alert-dialog'
+import { Circle, Square } from 'lucide-react'
 import Layout from './Layout'
 
+// Constants
 const rooms = [
   {
     id: 1,
     name: 'Room A',
+    icon: Square,
     totalCapacity: 30,
     sections: 3,
     sectionCapacity: 10,
@@ -14,6 +23,7 @@ const rooms = [
   {
     id: 2,
     name: 'Room B',
+    icon: Circle,
     totalCapacity: 20,
     sections: 2,
     sectionCapacity: 10,
@@ -24,134 +34,57 @@ const rooms = [
 const doctors = [
   {
     id: 1,
-    name: 'Dr. Smith',
-    specialty: 'Cardiology',
+    name: 'Lorena Alarco',
+    email: 'lorena.alarco@straumann.com',
+    brand: 'nuo',
+    specialty: 'Neodent and Nuvo',
     availability: [9, 10, 11, 14, 15, 16],
   },
   {
     id: 2,
-    name: 'Dr. Johnson',
-    specialty: 'Neurology',
+    name: 'Katherine Taboada',
+    email: 'katherine.taboada@straumann.com',
+    brand: 'straumann',
+    specialty: 'Straumann',
     availability: [10, 11, 13, 14, 15],
   },
-  {
-    id: 3,
-    name: 'Dr. Williams',
-    specialty: 'Pediatrics',
-    availability: [9, 12, 13, 14, 16, 17],
-  },
+  // ... other doctors
 ]
 
-const Alert = ({ children, variant = 'default' }) => (
-  <div
-    className={`p-4 mb-4 rounded-md ${
-      variant === 'destructive'
-        ? 'bg-red-100 text-red-700'
-        : 'bg-blue-100 text-blue-700'
-    }`}
-  >
-    {children}
-  </div>
-)
-
-const AlertDialog = ({ isOpen, onClose, title, description, onConfirm }) => {
-  if (!isOpen) return null
-
-  return (
-    <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4'>
-      <div className='bg-white rounded-lg p-6 max-w-sm w-full'>
-        <h2 className='text-xl font-bold mb-4'>{title}</h2>
-        <p className='mb-6 whitespace-pre-line'>{description}</p>
-        <div className='flex justify-end space-x-2'>
-          <button
-            className='px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300'
-            onClick={onClose}
-          >
-            Cancel
-          </button>
-          <button
-            className='px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'
-            onClick={onConfirm}
-          >
-            Confirm
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+const EMAIL_LISTS = {
+  marketing: [
+    'gianluca.de.bari@straumann.com',
+    'jocelyn.villanueva@straumann.com',
+  ],
 }
 
-const RoomReservationPage = ({ userBrand = 'nuo' }) => {
-  const [numberOfAttendees, setNumberOfAttendees] = useState('')
-  const [selectedDate, setSelectedDate] = useState(new Date())
-  const [selectedRoom, setSelectedRoom] = useState(null)
-  const [selectedTime, setSelectedTime] = useState(null)
-  const [availableTimes, setAvailableTimes] = useState([])
-  const [reservationTitle, setReservationTitle] = useState('')
-  const [selectedDoctor, setSelectedDoctor] = useState(null)
-  const [attendeeList, setAttendeeList] = useState('')
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
-  const [bookingError, setBookingError] = useState(null)
-  const [bookingNotes, setBookingNotes] = useState('')
-
-  // Calculate required sections based on number of attendees
-  const calculateRequiredSections = (attendees, sectionCapacity) => {
-    return Math.ceil(attendees / sectionCapacity)
-  }
-
-  // Filter available rooms based on number of attendees
-  const availableRooms = rooms.filter((room) => {
-    const requiredAttendees = parseInt(numberOfAttendees)
-    if (!requiredAttendees) return true
-
-    const requiredSections = calculateRequiredSections(
-      requiredAttendees,
-      room.sectionCapacity
-    )
-    return requiredSections <= room.sections
+const RoomReservationPage = ({ userBrand = 'nuo', userEmail }) => {
+  // State management
+  const [formState, setFormState] = useState({
+    reservationTitle: '',
+    numberOfAttendees: '',
+    selectedRoom: null,
+    selectedTime: null,
+    duration: 30,
+    selectedDoctor: null,
+    attendeeList: '',
+    bookingNotes: '',
   })
 
-  // Get required sections for selected room
-  const getRequiredSections = () => {
-    if (!selectedRoom || !numberOfAttendees) return null
-    const room = rooms.find((r) => r.id === selectedRoom)
-    return calculateRequiredSections(
-      parseInt(numberOfAttendees),
-      room.sectionCapacity
-    )
-  }
+  const [formErrors, setFormErrors] = useState({})
+  const [availableTimes, setAvailableTimes] = useState([])
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Get the assigned doctor based on the user's brand
-  const assignedDoctor = doctors.find(
-    (d) =>
-      (userBrand === 'nuo' && d.id === 2) ||
-      (userBrand === 'cardio' && d.id === 1) ||
-      (userBrand === 'pedia' && d.id === 3)
+  // Get available doctors based on user brand
+  const availableDoctors = doctors.filter(
+    (doctor) => doctor.brand === userBrand
   )
 
-  useEffect(() => {
-    if (selectedRoom) {
-      const room = rooms.find((r) => r.id === selectedRoom)
-      let availableTimes = room.availability
-
-      if (selectedDoctor) {
-        const doctor = doctors.find((d) => d.id === selectedDoctor)
-        availableTimes = availableTimes.filter((time) =>
-          doctor.availability.includes(time)
-        )
-      }
-
-      setAvailableTimes(availableTimes)
-    }
-  }, [selectedRoom, selectedDoctor])
-
-  const handleAttendeesInput = (input) => {
-    setAttendeeList(input)
-  }
-
+  // Helper function to parse attendee list
   const parseAttendees = () => {
-    if (!attendeeList) return []
-    return attendeeList
+    if (!formState.attendeeList) return []
+    return formState.attendeeList
       .split('\n')
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
@@ -161,62 +94,188 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
       })
   }
 
-  const handleBooking = () => {
-    const attendees = parseAttendees()
-    if (
-      selectedRoom &&
-      selectedTime &&
-      reservationTitle &&
-      attendees.length > 0 &&
-      numberOfAttendees &&
-      attendees.length === parseInt(numberOfAttendees)
+  // Validation function
+  const validateForm = () => {
+    const errors = {}
+
+    if (!formState.reservationTitle) {
+      errors.title = 'Title is required'
+    }
+
+    if (!formState.numberOfAttendees) {
+      errors.attendees = 'Number of attendees is required'
+    } else if (
+      parseAttendees().length !== parseInt(formState.numberOfAttendees)
     ) {
-      setShowConfirmDialog(true)
-    } else {
-      setBookingError(
-        'Please fill in all required fields and ensure the number of attendees matches the entered list.'
+      errors.attendees = 'Number of attendees must match the list'
+    }
+
+    if (!formState.selectedRoom) {
+      errors.room = 'Please select a room'
+    }
+
+    if (!formState.selectedTime) {
+      errors.time = 'Please select a time'
+    }
+
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  // Create email content
+  const createEmailTemplate = (reservationDetails) => {
+    return `
+      <h2>Room Reservation Confirmation</h2>
+      <p>A new room has been reserved with the following details:</p>
+      <ul>
+        <li>Title: ${reservationDetails.title}</li>
+        <li>Room: ${reservationDetails.room}</li>
+        <li>Date: ${reservationDetails.date}</li>
+        <li>Time: ${reservationDetails.time}</li>
+        <li>Duration: ${reservationDetails.duration}</li>
+        <li>Number of Attendees: ${reservationDetails.numberOfAttendees}</li>
+        <li>Required Sections: ${reservationDetails.sections}</li>
+        ${
+          reservationDetails.doctor
+            ? `<li>Doctor: ${reservationDetails.doctor}</li>`
+            : ''
+        }
+        ${
+          reservationDetails.notes
+            ? `<li>Notes: ${reservationDetails.notes}</li>`
+            : ''
+        }
+      </ul>
+      <h3>Attendee List:</h3>
+      <ul>
+        ${reservationDetails.attendees
+          .map(
+            (attendee) =>
+              `<li>${attendee.name}${
+                attendee.id ? ` (${attendee.id})` : ''
+              }</li>`
+          )
+          .join('')}
+      </ul>
+    `
+  }
+
+  // Handle sending notifications
+  const sendReservationNotifications = async (reservationDetails) => {
+    try {
+      const recipients = new Set([userEmail, ...EMAIL_LISTS.marketing])
+
+      if (reservationDetails.doctorEmail) {
+        recipients.add(reservationDetails.doctorEmail)
+      }
+
+      const emailTemplate = createEmailTemplate(reservationDetails)
+
+      await Promise.all(
+        Array.from(recipients).map((email) =>
+          axiosInstance.post('/email/send', {
+            to: email,
+            subject: `Room Reservation: ${reservationDetails.title}`,
+            html: emailTemplate,
+          })
+        )
       )
+    } catch (error) {
+      console.error('Error sending notifications:', error)
+      throw error
     }
   }
 
-  const confirmBooking = () => {
-    const attendees = parseAttendees()
-    const requiredSections = getRequiredSections()
+  // Handle form submission
+  const handleBooking = async () => {
+    if (!validateForm()) {
+      toast.error('Please fill in all required fields correctly')
+      return
+    }
 
-    console.log('Reservation confirmed:', {
-      room: rooms.find((r) => r.id === selectedRoom).name,
-      sectionsRequired: requiredSections,
-      date: selectedDate.toDateString(),
-      time: `${selectedTime}:00`,
-      title: reservationTitle,
-      numberOfAttendees,
-      doctor: selectedDoctor
-        ? doctors.find((d) => d.id === selectedDoctor).name
-        : 'None',
-      attendees,
-      notes: bookingNotes,
-    })
-
-    // Reset form
-    setSelectedRoom(null)
-    setSelectedTime(null)
-    setReservationTitle('')
-    setSelectedDoctor(null)
-    setAttendeeList('')
-    setNumberOfAttendees('')
-    setBookingNotes('')
-    setShowConfirmDialog(false)
+    setShowConfirmDialog(true)
   }
 
-  // Get section information text
-  const getSectionInfo = () => {
-    if (!selectedRoom || !numberOfAttendees) return null
-    const room = rooms.find((r) => r.id === selectedRoom)
-    const requiredSections = getRequiredSections()
-    return `This booking will use ${requiredSections} section${
-      requiredSections > 1 ? 's' : ''
-    } of the room`
+  // Handle confirmation
+  const handleConfirmBooking = async () => {
+    try {
+      setIsSubmitting(true)
+      const room = rooms.find((r) => r.id === formState.selectedRoom)
+      const doctor = doctors.find((d) => d.id === formState.selectedDoctor)
+
+      const reservationDetails = {
+        title: formState.reservationTitle,
+        room: room.name,
+        sections: calculateRequiredSection(
+          parseInt(formState.numberOfAttendees),
+          room.sectionCapacity
+        ),
+        date: new Date().toDateString(),
+        time: `${formState.selectedTime}:00`,
+        duration: `${formState.duration} minutes`,
+        numberOfAttendees: formState.numberOfAttendees,
+        doctor: doctor?.name,
+        doctorEmail: doctor?.email,
+        attendees: parseAttendees(),
+        notes: formState.bookingNotes,
+      }
+
+      // Send notifications
+      await sendReservationNotifications(reservationDetails)
+
+      // Show success message
+      toast.success('Reservation confirmed!')
+
+      // Reset form
+      setFormState({
+        reservationTitle: '',
+        numberOfAttendees: '',
+        selectedRoom: null,
+        selectedTime: null,
+        duration: 30,
+        selectedDoctor: null,
+        attendeeList: '',
+        bookingNotes: '',
+      })
+
+      setShowConfirmDialog(false)
+    } catch (error) {
+      console.error('Error processing reservation:', error)
+      toast.error('Error processing reservation')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
+
+  // Update available times when dependencies change
+  useEffect(() => {
+    if (formState.selectedRoom && formState.numberOfAttendees) {
+      const room = rooms.find((r) => r.id === formState.selectedRoom)
+      let times = [...room.availability]
+
+      if (formState.selectedDoctor) {
+        const doctor = doctors.find((d) => d.id === formState.selectedDoctor)
+        times = times.filter((time) => doctor.availability.includes(time))
+      }
+
+      const durationHours = formState.duration / 60
+      times = times.filter((time) => {
+        const endTime = time + durationHours
+        const timeSlots = []
+        for (let t = time; t < endTime; t += 0.5) {
+          timeSlots.push(Math.floor(t))
+        }
+        return timeSlots.every((t) => room.availability.includes(t))
+      })
+
+      setAvailableTimes(times)
+    }
+  }, [
+    formState.selectedRoom,
+    formState.selectedDoctor,
+    formState.duration,
+    formState.numberOfAttendees,
+  ])
 
   return (
     <Layout>
@@ -232,157 +291,45 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
           </div>
 
           <div className='bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden'>
-            <div className='p-6'>
-              <div className='max-w-2xl mx-auto space-y-8'>
-                {/* Reservation Title Input */}
-                <div className='space-y-4'>
-                  <label
-                    className='block text-sm font-semibold text-gray-700'
-                    htmlFor='title'
-                  >
-                    Reservation Title
-                  </label>
-                  <input
-                    type='text'
-                    id='title'
-                    className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
-                    value={reservationTitle}
-                    onChange={(e) => setReservationTitle(e.target.value)}
-                    placeholder='e.g., Team Meeting, Training Session'
-                  />
-                </div>
+            <div className='p-6 space-y-8'>
+              <RoomSection
+                selectedRoom={formState.selectedRoom}
+                setSelectedRoom={(roomId) =>
+                  setFormState((prev) => ({ ...prev, selectedRoom: roomId }))
+                }
+                numberOfAttendees={formState.numberOfAttendees}
+                showError={!!formErrors.room}
+              />
 
-                {/* Number of Attendees */}
-                <div className='space-y-4'>
-                  <label
-                    className='block text-sm font-semibold text-gray-700'
-                    htmlFor='attendees'
-                  >
-                    Number of Attendees
-                  </label>
-                  <input
-                    type='number'
-                    id='attendees'
-                    min='1'
-                    className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
-                    value={numberOfAttendees}
-                    onChange={(e) => setNumberOfAttendees(e.target.value)}
-                    placeholder='Enter number of attendees'
-                  />
-                </div>
-
-                {/* Date Selection */}
-                <div className='space-y-4'>
-                  <label
-                    className='block text-sm font-semibold text-gray-700'
-                    htmlFor='date'
-                  >
-                    Select Date
-                  </label>
-                  <input
-                    type='date'
-                    id='date'
-                    className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
-                    value={selectedDate.toISOString().split('T')[0]}
-                    onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                    min={new Date().toISOString().split('T')[0]}
-                  />
-                </div>
-                {/* Doctor Selection */}
-                <div>
-                  <label
-                    className='block text-sm font-semibold text-gray-700 mb-2'
-                    htmlFor='doctor'
-                  >
-                    Request Doctor (Optional)
-                  </label>
-                  <select
-                    id='doctor'
-                    className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 appearance-none'
-                    onChange={(e) =>
-                      setSelectedDoctor(
-                        e.target.value ? Number(e.target.value) : null
-                      )
-                    }
-                    value={selectedDoctor || ''}
-                  >
-                    <option value=''>No doctor needed</option>
-                    <option value={assignedDoctor.id}>
-                      {assignedDoctor.name} - {assignedDoctor.specialty}
-                    </option>
-                  </select>
-                </div>
-
-                {/* Room Selection */}
-                <div className='space-y-4'>
-                  <label className='block text-sm font-semibold text-gray-700'>
-                    Select Room
-                  </label>
-                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-                    {availableRooms.map((room) => (
-                      <div
-                        key={room.id}
-                        onClick={() => setSelectedRoom(room.id)}
-                        className={`cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 ${
-                          selectedRoom === room.id
-                            ? 'border-indigo-500 bg-indigo-50'
-                            : 'border-gray-200 hover:border-indigo-200'
-                        }`}
-                      >
-                        <div className='flex justify-between items-start mb-2'>
-                          <h3 className='font-semibold text-gray-900'>
-                            {room.name}
-                          </h3>
-                          <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800'>
-                            Capacity: {room.totalCapacity}
-                          </span>
-                        </div>
-                        <p className='text-sm text-gray-600'>
-                          {room.sections} sections of {room.sectionCapacity}{' '}
-                          people each
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                  {getSectionInfo() && (
-                    <p className='text-sm text-indigo-600 font-medium mt-2'>
-                      {getSectionInfo()}
-                    </p>
-                  )}
-                </div>
-
-                {/* Booking Notes */}
-                <div className='space-y-4'>
-                  <label className='block text-sm font-semibold text-gray-700'>
-                    Booking Notes
-                  </label>
-                  <textarea
-                    className='block w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-xl leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200'
-                    rows='3'
-                    value={bookingNotes}
-                    onChange={(e) => setBookingNotes(e.target.value)}
-                    placeholder='Add any additional notes or requirements for this booking...'
-                  />
-                </div>
-
-                {/* Rest of the form remains the same */}
-
-                <button
-                  className='w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 px-6 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed'
-                  onClick={handleBooking}
-                  disabled={
-                    !selectedRoom ||
-                    !selectedTime ||
-                    !reservationTitle ||
-                    !numberOfAttendees ||
-                    !attendeeList ||
-                    parseAttendees().length !== parseInt(numberOfAttendees)
-                  }
-                >
-                  <Calendar size={20} />
-                  <span>Complete Reservation</span>
-                </button>
-              </div>
+              <ReservationForm
+                {...formState}
+                setReservationTitle={(title) =>
+                  setFormState((prev) => ({ ...prev, reservationTitle: title }))
+                }
+                setNumberOfAttendees={(num) =>
+                  setFormState((prev) => ({ ...prev, numberOfAttendees: num }))
+                }
+                setDuration={(dur) =>
+                  setFormState((prev) => ({ ...prev, duration: dur }))
+                }
+                setSelectedDoctor={(doc) =>
+                  setFormState((prev) => ({ ...prev, selectedDoctor: doc }))
+                }
+                setSelectedTime={(time) =>
+                  setFormState((prev) => ({ ...prev, selectedTime: time }))
+                }
+                setAttendeeList={(list) =>
+                  setFormState((prev) => ({ ...prev, attendeeList: list }))
+                }
+                setBookingNotes={(notes) =>
+                  setFormState((prev) => ({ ...prev, bookingNotes: notes }))
+                }
+                availableDoctors={availableDoctors}
+                availableTimes={availableTimes}
+                parseAttendees={parseAttendees}
+                handleBooking={handleBooking}
+                formErrors={formErrors}
+              />
             </div>
           </div>
         </div>
@@ -393,22 +340,27 @@ const RoomReservationPage = ({ userBrand = 'nuo' }) => {
           title='Confirm Reservation'
           description={`
             Room: ${
-              selectedRoom ? rooms.find((r) => r.id === selectedRoom).name : ''
+              formState.selectedRoom
+                ? rooms.find((r) => r.id === formState.selectedRoom).name
+                : ''
             }
-            Required Sections: ${getRequiredSections()}
-            Date: ${selectedDate.toDateString()}
-            Time: ${selectedTime ? `${selectedTime}:00` : ''}
-            Title: ${reservationTitle}
-            Number of Attendees: ${numberOfAttendees}
+            Time: ${
+              formState.selectedTime ? `${formState.selectedTime}:00` : ''
+            }
+            Duration: ${formState.duration} minutes
+            Title: ${formState.reservationTitle}
+            Number of Attendees: ${formState.numberOfAttendees}
             Doctor: ${
-              selectedDoctor
-                ? doctors.find((d) => d.id === selectedDoctor).name
+              formState.selectedDoctor
+                ? doctors.find((d) => d.id === formState.selectedDoctor).name
                 : 'None'
             }
-            Total Attendees: ${parseAttendees().length}
-            ${bookingNotes ? `\nNotes: ${bookingNotes}` : ''}
+            ${
+              formState.bookingNotes ? `\nNotes: ${formState.bookingNotes}` : ''
+            }
           `}
-          onConfirm={confirmBooking}
+          onConfirm={handleConfirmBooking}
+          isSubmitting={isSubmitting}
         />
       </div>
     </Layout>
