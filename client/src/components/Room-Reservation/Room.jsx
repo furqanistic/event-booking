@@ -1,14 +1,12 @@
-// RoomReservationPage.js
+// Room.js
 import { axiosInstance } from '@/config'
 import React, { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 
 import ReservationForm from '@/components/Room-Reservation/ReservationForm'
-import Room from '@/components/Room-Reservation/Room'
 import RoomSection from '@/components/Room-Reservation/RoomSection'
 import { AlertDialog } from '@/components/ui/alert-dialog'
 import { Circle, Square } from 'lucide-react'
-import Layout from './Layout'
 
 // Constants
 const rooms = [
@@ -59,18 +57,46 @@ const EMAIL_LISTS = {
   ],
 }
 
-const RoomReservationPage = ({ userBrand = 'nuo', userEmail }) => {
-  // State management
+const Room = ({
+  eventTitle = '',
+  startDate = null,
+  endDate = null,
+  description = '',
+  isFromEvent = false,
+  onComplete,
+  userBrand = 'nuo',
+  userEmail,
+  className = '',
+}) => {
   const [formState, setFormState] = useState({
-    reservationTitle: '',
+    reservationTitle: eventTitle || '',
     numberOfAttendees: '',
     selectedRoom: null,
-    selectedTime: null,
-    duration: 30,
+    selectedTime: startDate ? new Date(startDate).getHours() : null,
+    duration:
+      startDate && endDate
+        ? Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60))
+        : 30,
     selectedDoctor: null,
     attendeeList: '',
-    bookingNotes: '',
+    bookingNotes: description || '',
   })
+
+  // Effect to update form when props change
+  useEffect(() => {
+    setFormState((prev) => ({
+      ...prev,
+      reservationTitle: eventTitle || prev.reservationTitle,
+      selectedTime: startDate
+        ? new Date(startDate).getHours()
+        : prev.selectedTime,
+      duration:
+        startDate && endDate
+          ? Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60))
+          : prev.duration,
+      bookingNotes: description || prev.bookingNotes,
+    }))
+  }, [eventTitle, startDate, endDate, description])
 
   const [formErrors, setFormErrors] = useState({})
   const [availableTimes, setAvailableTimes] = useState([])
@@ -279,10 +305,131 @@ const RoomReservationPage = ({ userBrand = 'nuo', userEmail }) => {
   ])
 
   return (
-    <Layout>
-      <Room />
-    </Layout>
+    <div className={`p-5 bg-transparent ${className}`}>
+      <div className='space-y-6'>
+        <div className='text-center mb-6'>
+          <h2 className='text-2xl font-bold text-gray-900'>Room Reservation</h2>
+          <p className='text-gray-600 mt-1'>Schedule a room for your event</p>
+        </div>
+
+        <div className='space-y-6'>
+          {/* Title and Number of Attendees Fields */}
+          <div className='space-y-4'>
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-1'>
+                Reservation Title
+              </label>
+              <input
+                type='text'
+                value={formState.reservationTitle}
+                onChange={(e) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    reservationTitle: e.target.value,
+                  }))
+                }
+                className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                placeholder='Enter reservation title'
+              />
+              {formErrors.title && (
+                <p className='mt-1 text-sm text-red-500'>{formErrors.title}</p>
+              )}
+            </div>
+
+            <div>
+              <label className='block text-sm font-medium text-gray-700 mb-1'>
+                Number of Attendees
+              </label>
+              <input
+                type='number'
+                value={formState.numberOfAttendees}
+                onChange={(e) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    numberOfAttendees: e.target.value,
+                  }))
+                }
+                className='w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                placeholder='Enter number of attendees'
+              />
+              {formErrors.attendees && (
+                <p className='mt-1 text-sm text-red-500'>
+                  {formErrors.attendees}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Room Selection */}
+          <RoomSection
+            selectedRoom={formState.selectedRoom}
+            setSelectedRoom={(roomId) =>
+              setFormState((prev) => ({ ...prev, selectedRoom: roomId }))
+            }
+            numberOfAttendees={formState.numberOfAttendees}
+            showError={!!formErrors.room}
+          />
+
+          {/* Rest of the form fields */}
+          <ReservationForm
+            {...formState}
+            setReservationTitle={(title) =>
+              setFormState((prev) => ({ ...prev, reservationTitle: title }))
+            }
+            setNumberOfAttendees={(num) =>
+              setFormState((prev) => ({ ...prev, numberOfAttendees: num }))
+            }
+            setDuration={(dur) =>
+              setFormState((prev) => ({ ...prev, duration: dur }))
+            }
+            setSelectedDoctor={(doc) =>
+              setFormState((prev) => ({ ...prev, selectedDoctor: doc }))
+            }
+            setSelectedTime={(time) =>
+              setFormState((prev) => ({ ...prev, selectedTime: time }))
+            }
+            setAttendeeList={(list) =>
+              setFormState((prev) => ({ ...prev, attendeeList: list }))
+            }
+            setBookingNotes={(notes) =>
+              setFormState((prev) => ({ ...prev, bookingNotes: notes }))
+            }
+            availableDoctors={availableDoctors}
+            availableTimes={availableTimes}
+            parseAttendees={parseAttendees}
+            handleBooking={handleBooking}
+            formErrors={formErrors}
+            hideBasicFields={true} // Add this prop to hide title and attendees fields
+          />
+        </div>
+      </div>
+
+      <AlertDialog
+        isOpen={showConfirmDialog}
+        onClose={() => setShowConfirmDialog(false)}
+        title='Confirm Reservation'
+        description={`
+          Room: ${
+            formState.selectedRoom
+              ? rooms.find((r) => r.id === formState.selectedRoom).name
+              : ''
+          }
+          Time: ${formState.selectedTime ? `${formState.selectedTime}:00` : ''}
+          Duration: ${formState.duration} minutes
+          Title: ${formState.reservationTitle}
+          Number of Attendees: ${formState.numberOfAttendees}
+          Doctor: ${
+            formState.selectedDoctor
+              ? doctors.find((d) => d.id === formState.selectedDoctor).name
+              : 'None'
+          }
+          ${formState.bookingNotes ? `\nNotes: ${formState.bookingNotes}` : ''}
+        `}
+        onConfirm={handleConfirmBooking}
+        isSubmitting={isSubmitting}
+      />
+    </div>
   )
 }
 
-export default RoomReservationPage
+export default Room

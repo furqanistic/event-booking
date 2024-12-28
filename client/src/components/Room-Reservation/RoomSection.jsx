@@ -33,22 +33,22 @@ export const calculateRequiredSections = (attendees, sectionCapacity) => {
 }
 
 export const validateSectionAvailability = (room, attendees) => {
+  // If no attendees specified, room is available
+  if (!attendees) return true
+
+  // First check if attendees exceed total room capacity
+  if (attendees > room.totalCapacity) {
+    return false
+  }
+
+  // Calculate required sections
   const requiredSections = calculateRequiredSections(
     attendees,
     room.sectionCapacity
   )
 
-  // Example: If Room B needs all sections (11+ attendees), it's fully booked
-  if (room.id === 2 && requiredSections > 1) {
-    return false
-  }
-
-  // For Room A, if we need 1 section (1-10 people), only block 1/3 capacity
-  if (room.id === 1) {
-    return requiredSections <= room.sections
-  }
-
-  return true
+  // Check if required sections are available
+  return requiredSections <= room.sections
 }
 
 const RoomSection = ({
@@ -67,7 +67,8 @@ const RoomSection = ({
   // Filter available rooms based on number of attendees
   const availableRooms = rooms.filter((room) => {
     if (!numberOfAttendees) return true
-    return validateSectionAvailability(room, parseInt(numberOfAttendees))
+    const attendees = parseInt(numberOfAttendees)
+    return validateSectionAvailability(room, attendees)
   })
 
   // Get section info for selected room

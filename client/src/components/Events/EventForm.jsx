@@ -13,10 +13,10 @@ import { useMutation, useQueryClient } from 'react-query'
 import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { axiosInstance } from '../../config'
+import Room from '../Room-Reservation/Room'
 import { useEventContext } from './EventProvider'
 import MaterialsSection from './MaterialsSection'
 import MerchandisingSection from './MerchandisingSection'
-
 const EventForm = () => {
   const navigate = useNavigate()
   const { updateDraftEvent, refreshEvents } = useEventContext()
@@ -24,7 +24,8 @@ const EventForm = () => {
   const [showRoomReservation, setShowRoomReservation] = useState(false)
   const [formError, setFormError] = useState(null)
   const { currentUser } = useSelector((state) => state.user)
-
+  const [showRoomComponent, setShowRoomComponent] = useState(false)
+  const [roomData, setRoomData] = useState(null)
   const initialFormState = {
     eventType: 'Congreso',
     isInternal: false,
@@ -169,14 +170,27 @@ const EventForm = () => {
   }
 
   const handleRoomReservation = () => {
-    navigate('/room-reservation', {
-      state: {
-        eventTitle: formData.title,
-        startDate: formData.start,
-        endDate: formData.end,
-        isFromEvent: true,
-      },
-    })
+    setShowRoomComponent(true)
+    setShowRoomReservation(false)
+  }
+
+  // Handle room reservation completion
+  const handleRoomReservationComplete = () => {
+    setShowRoomComponent(false)
+    resetForm()
+    refreshEvents()
+  }
+
+  if (showRoomComponent && roomData) {
+    return (
+      <Room
+        eventTitle={roomData.eventTitle}
+        startDate={roomData.startDate}
+        endDate={roomData.endDate}
+        isFromEvent={roomData.isFromEvent}
+        onComplete={handleRoomReservationComplete}
+      />
+    )
   }
 
   const EMAIL_LISTS = {
@@ -755,12 +769,9 @@ const EventForm = () => {
 
       {/* Room Reservation Dialog */}
       <Dialog open={showRoomReservation} onOpenChange={setShowRoomReservation}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Room Reservation Required</DialogTitle>
-          </DialogHeader>
-          <div className='p-4'>
-            <p className='mb-4'>
+        <DialogContent className='sm:max-w-md'>
+          <div className='p-4 space-y-4'>
+            <p className='text-gray-600'>
               Would you like to proceed with room reservation for this internal
               event?
             </p>
@@ -771,18 +782,33 @@ const EventForm = () => {
                   resetForm()
                   refreshEvents()
                 }}
-                className='px-4 py-2 text-gray-600 hover:text-gray-800'
+                className='px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors'
               >
                 Skip for now
               </button>
               <button
                 onClick={handleRoomReservation}
-                className='px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700'
+                className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors'
               >
                 Proceed to Room Reservation
               </button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Room Reservation Dialog */}
+      <Dialog open={showRoomComponent} onOpenChange={setShowRoomComponent}>
+        <DialogContent className='sm:max-w-7xl max-h-[90vh] overflow-y-auto'>
+          <Room
+            eventTitle={formData.title}
+            startDate={formData.start}
+            endDate={formData.end}
+            description={formData.description}
+            isFromEvent={true}
+            onComplete={handleRoomReservationComplete}
+            className='p-0'
+          />
         </DialogContent>
       </Dialog>
     </div>
