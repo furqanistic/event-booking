@@ -1,6 +1,6 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { CheckCircle2, Loader2 } from 'lucide-react'
+import { CheckCircle2, ChevronDownIcon, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { useSelector } from 'react-redux'
 import CartSummary from '../components/Merch/CartSummary'
@@ -586,7 +586,20 @@ const MerchPage = () => {
 
                     <div>
                       <label className='block text-sm text-gray-600 mb-1'>
-                        Referencia
+                        Distrito:
+                      </label>
+                      <input
+                        type='text'
+                        name='district'
+                        value={formData.district}
+                        onChange={handleInputChange}
+                        className='w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                      />
+                    </div>
+
+                    <div>
+                      <label className='block text-sm text-gray-600 mb-1'>
+                        Referencia:
                       </label>
                       <input
                         type='text'
@@ -599,35 +612,40 @@ const MerchPage = () => {
 
                     <div>
                       <label className='block text-sm text-gray-600 mb-1'>
-                        Departamento
+                        Provincia:
                       </label>
-                      {renderDropdown(
-                        'department',
-                        formData.department,
-                        departmentOptions
-                      )}
+                      <div className='relative'>
+                        <select
+                          name='province'
+                          value={formData.province}
+                          onChange={handleInputChange}
+                          className='w-full border border-gray-300 rounded-md p-2 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        >
+                          <option value=''>Select Province</option>
+                          {provinceOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDownIcon
+                          size={20}
+                          className='absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none'
+                        />
+                      </div>
                     </div>
 
                     <div>
                       <label className='block text-sm text-gray-600 mb-1'>
-                        Provincia
+                        Departamento:
                       </label>
-                      {renderDropdown(
-                        'province',
-                        formData.province,
-                        provinceOptions
-                      )}
-                    </div>
-
-                    <div>
-                      <label className='block text-sm text-gray-600 mb-1'>
-                        Distrito
-                      </label>
-                      {renderDropdown(
-                        'district',
-                        formData.district,
-                        districtOptions
-                      )}
+                      <input
+                        type='text'
+                        name='department'
+                        value={formData.department}
+                        onChange={handleInputChange}
+                        className='w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                      />
                     </div>
                   </div>
                 )}

@@ -9,21 +9,21 @@ import Layout from './Layout'
 const Home = () => {
   return (
     <Layout>
-      <div className='p-6 space-y-6'>
+      <div className='p-6 flex flex-col gap-4'>
         <StatisticBoxes />
 
-        <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
-          <div className='lg:col-span-3'>
+        {/* Events and Calendar Section with News */}
+        <div className='flex flex-col lg:flex-row gap-4'>
+          {/* Left Side: Events + News */}
+          <div className='flex-grow lg:w-3/4 flex flex-col gap-4'>
             <EventsLineChart />
-          </div>
-          <div>
-            <MonthlyCalendar />
-          </div>
-        </div>
-
-        <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
-          <div className='lg:col-span-3'>
             <NewsCards />
+          </div>
+
+          {/* Right Side: Calendar + Reservations */}
+          <div className='w-full lg:w-1/4 flex flex-col gap-4'>
+            <MonthlyCalendar />
+            {/* Your Today's Room Reservations component goes here */}
           </div>
         </div>
       </div>

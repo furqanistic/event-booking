@@ -14,14 +14,6 @@ const StatBox = ({ number, text, icon: Icon, color, trend }) => (
       <div>
         <p className='text-3xl font-bold mb-1'>{number}</p>
         <p className='text-sm text-white/80'>{text}</p>
-        {trend && (
-          <div className='mt-2 text-sm text-white/80'>
-            <span className={trend > 0 ? 'text-green-300' : 'text-red-300'}>
-              {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
-            </span>
-            {' vs last month'}
-          </div>
-        )}
       </div>
       <div className='p-2 bg-white/10 rounded-lg'>
         <Icon size={24} className='text-white' />
